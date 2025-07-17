@@ -11,6 +11,7 @@ from temporal_embeddings.evaluation.utils.evaluation.metrics import compute_accu
 def evaluate_sentence_transformer(model_name: str, max_seq_len: int, dataset_file_path: Path, eval_id: int, top_k: int, metric: str, skip: bool) -> None:
     model: SentenceTransformer = SentenceTransformer(model_name)
     model.max_seq_length = max_seq_len
+    similarities_file_path: Path = Path(f"output/similarities/{model_name}/{eval_id}_{model_name}_similarities.json")
 
     if not skip:
         output_similarities: List[List[float]] = []
@@ -38,7 +39,6 @@ def evaluate_sentence_transformer(model_name: str, max_seq_len: int, dataset_fil
 
                 output_similarities.append(similarities)
 
-        similarities_file_path: Path = Path(f"output/similarities/{model_name}/{eval_id}_{model_name}_similarities.json")
         create_folders(similarities_file_path.parent)
         
         with similarities_file_path.open("w", encoding="utf-8") as g:
