@@ -8,41 +8,45 @@ from temporal_embeddings.evaluation.utils.evaluation.temporal_bert.inference imp
 from temporal_embeddings.utils.os.folder_management import create_folders
 from temporal_embeddings.evaluation.utils.evaluation.metrics import compute_accuracy
 
-def evaluate_temporal_bert(model_name: str, model_path: str, batch_size: int, max_seq_len: int, dataset_file_path: Path, eval_id: int, top_k: int, metric: str) -> None:
+def evaluate_temporal_bert(model_name: str, model_path: str, batch_size: int, max_seq_len: int, dataset_file_path: Path, eval_id: int, top_k: int, metric: str, skip: bool) -> None:
     GROUND_TRUTH_FILE_PATH: Path = dataset_file_path
     SBERT_SIMILARITIES_FILE_PATH: Path = Path(f"output/similarities/temporal_bert/{model_name}/{eval_id}_temporal_bert_similarities.json")
     create_folders(SBERT_SIMILARITIES_FILE_PATH.parent)
 
-    similarities_list: List[List[int]] = []
+    if not skip:
+        similarities_list: List[List[int]] = []
 
-    reference_date: str = "09 august 2024"
+        reference_date: str = "09 august 2024"
 
-    with GROUND_TRUTH_FILE_PATH.open("r", encoding="utf-8") as f:
-        data = json.load(f)
+        with GROUND_TRUTH_FILE_PATH.open("r", encoding="utf-8") as f:
+            data = json.load(f)
 
-        inference: Inference = Inference(model_name=model_name, model_path=model_path, batch_size=batch_size, max_seq_len=max_seq_len)
+            inference: Inference = Inference(model_name=model_name, model_path=model_path, batch_size=batch_size, max_seq_len=max_seq_len)
 
-        for element in tqdm(data):
-            question: str = element["question"]
+            for element in tqdm(data):
+                question: str = element["question"]
 
-            second_sentences: List[str] = element["paragraphs"]
-            first_sentences: List[str] = [question] * len(second_sentences)
-            reference_dates: List[str] = [reference_date] * len(second_sentences)
-            ground_truth: List[float] = [0.0] * len(second_sentences)
+                second_sentences: List[str] = element["paragraphs"]
+                first_sentences: List[str] = [question] * len(second_sentences)
+                reference_dates: List[str] = [reference_date] * len(second_sentences)
+                ground_truth: List[float] = [0.0] * len(second_sentences)
 
-            inference.set_sentences(first_sentences, reference_dates, second_sentences, reference_dates, ground_truth)
+                inference.set_sentences(first_sentences, reference_dates, second_sentences, reference_dates, ground_truth)
 
-            similarities: List[float] = None
+                similarities: List[float] = None
 
-            output = inference.evaluate()
+                output = inference.evaluate()
 
-            similarities = output["similarity"]
+                similarities = output["similarity"]
 
-            similarities_list.append(similarities)
+                similarities_list.append(similarities)
 
-    with SBERT_SIMILARITIES_FILE_PATH.open("w", encoding="utf-8") as g:
-        json.dump(similarities_list, g, indent=4, ensure_ascii=False)
+        with SBERT_SIMILARITIES_FILE_PATH.open("w", encoding="utf-8") as g:
+            json.dump(similarities_list, g, indent=4, ensure_ascii=False)
 
+    with SBERT_SIMILARITIES_FILE_PATH.open("r", encoding="utf-8") as f:
+        similarities_list: List[List[float]] = json.load(f)
+    
     ground_truth: List[int] = []
 
     with open(GROUND_TRUTH_FILE_PATH, "r") as f:
