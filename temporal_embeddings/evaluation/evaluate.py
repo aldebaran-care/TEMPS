@@ -1,92 +1,28 @@
-import json
-from pathlib import Path
-from typing import List, Dict
-
-from sentence_transformers import SentenceTransformer, util
-from tqdm import tqdm
-
-from temporal_embeddings.utils.os.folder_management import create_folders
 from temporal_embeddings.evaluation.utils.evaluation.temporal_bert.temporal_bert_evaluation import evaluate_temporal_bert
 from temporal_embeddings.evaluation.utils.evaluation.temporal_bert_full.temporal_bert_full import evaluate_temporal_bert_full
 from temporal_embeddings.evaluation.utils.evaluation.mistral.mistral_evaluation import evaluate_mistral
 from temporal_embeddings.evaluation.utils.evaluation.alibaba.alibaba_evaluation import evaluate_alibaba
 from temporal_embeddings.evaluation.utils.evaluation.salesforce.salesforce_evaluation import evaluate_salesforce
-from temporal_embeddings.evaluation.utils.evaluation.metrics import compute_accuracy
+from temporal_embeddings.evaluation.utils.dataset_file_path import get_dataset_file_path
+from temporal_embeddings.evaluation.utils.evaluate_sentence_transformer import evaluate_sentence_transformer
 
-def evaluate_model(model_name: str, model_path: str, batch_size: int, max_seq_len: int, benchmark: str, eval_id: int, top_k: int, skip: bool = False) -> None:
-    if benchmark == "time_sensitive_qa":
-        dataset_file_path: Path = Path("data/evaluation/time_sensitive_qa/processed_human_annotated_test.json")
-
-    elif benchmark == "menat_qa":
-        dataset_file_path: Path = Path("data/evaluation/menat_qa/processed_menat_qa.json")
-
-    elif benchmark == "menat_qa_granularity":
-        dataset_file_path = Path("data/evaluation/menat_qa/processed_menat_qa_granularity.json")
-
-    elif benchmark == "menat_qa_counterfactual":
-        dataset_file_path = Path("data/evaluation/menat_qa/processed_menat_qa_counterfactual.json")
-
-    elif benchmark == "menat_qa_expand":
-        dataset_file_path = Path("data/evaluation/menat_qa/processed_menat_qa_expand.json")
-
-    elif benchmark == "menat_qa_narrow":
-        dataset_file_path = Path("data/evaluation/menat_qa/processed_menat_qa_narrow.json")
-
-    elif benchmark == "ts_retriever":
-        dataset_file_path = Path("data/evaluation/ts_retriever/processed_ts_retriever.json")
+def evaluate_model(model_name: str, model_path: str, batch_size: int, max_seq_len: int, benchmark: str, eval_id: int, top_k: int, metric: str, skip: bool = False) -> None:
+    dataset_file_path = get_dataset_file_path(benchmark)
 
     if model_name in ["temporal_bert", "all-minilm-l6-v2"]:
-        evaluate_temporal_bert(model_name, model_path, batch_size, max_seq_len, dataset_file_path, eval_id, top_k)
-        return
+        evaluate_temporal_bert(model_name, model_path, batch_size, max_seq_len, dataset_file_path, eval_id, top_k, metric)
     
-    if model_name in ["temporal_bert_full", "all-minilm-l6-v2-full"]:
+    elif model_name in ["temporal_bert_full", "all-minilm-l6-v2-full"]:
         evaluate_temporal_bert_full(model_name, model_path, batch_size, max_seq_len, dataset_file_path, eval_id, top_k, skip)
-        return
     
-    if model_name == "mistral":
+    elif model_name == "mistral":
         evaluate_mistral()
-        return
     
-    if model_name == "alibaba":
+    elif model_name == "alibaba":
         evaluate_alibaba()
-        return
     
-    if model_name == "salesforce":
+    elif model_name == "salesforce":
         evaluate_salesforce(dataset_file_path, eval_id, top_k)
-        return
 
-    model: SentenceTransformer = SentenceTransformer(model_name)
-    model.max_seq_length = max_seq_len
-
-    output_similarities: List[List[float]] = []
-
-    data: List[Dict] = []
-    ground_truth: List[int] = []
-
-    with dataset_file_path.open("r", encoding="utf-8") as f:
-        data = json.load(f)
-
-        for element in tqdm(data):
-            ground_truth.append(element["answer"])
-
-            question: str = element["question"]
-            question_emb = model.encode(question, convert_to_tensor=True) if model_name != "BAAI/bge-large-en" else model.encode(question, convert_to_tensor=True, normalize_embeddings=True)
-
-            paragraphs: List[str] = element["paragraphs"]
-
-            similarities: List[float] = []
-            
-            for paragraph in paragraphs:
-                paragraph_emb = model.encode(paragraph, convert_to_tensor=True) if model_name != "BAAI/bge-large-en" else model.encode(paragraph, convert_to_tensor=True, normalize_embeddings=True)
-
-                similarities.append(float(util.cos_sim(question_emb, paragraph_emb)[0].item()))
-
-            output_similarities.append(similarities)
-
-    similarities_file_path: Path = Path(f"output/similarities/{model_name}/{eval_id}_{model_name}_similarities.json")
-    create_folders(similarities_file_path.parent)
-    
-    with similarities_file_path.open("w", encoding="utf-8") as g:
-        json.dump(output_similarities, g, indent=4, ensure_ascii=False)
-
-    print(compute_accuracy(ground_truth, output_similarities, top_k))
+    else:
+        evaluate_sentence_transformer(model_name, max_seq_len, dataset_file_path, eval_id, top_k)

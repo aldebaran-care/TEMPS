@@ -8,7 +8,7 @@ from temporal_embeddings.evaluation.utils.evaluation.temporal_bert.inference imp
 from temporal_embeddings.utils.os.folder_management import create_folders
 from temporal_embeddings.evaluation.utils.evaluation.metrics import compute_accuracy
 
-def evaluate_temporal_bert(model_name: str, model_path: str, batch_size: int, max_seq_len: int, dataset_file_path: Path, eval_id: int, top_k: int) -> None:
+def evaluate_temporal_bert(model_name: str, model_path: str, batch_size: int, max_seq_len: int, dataset_file_path: Path, eval_id: int, top_k: int, metric: str) -> None:
     GROUND_TRUTH_FILE_PATH: Path = dataset_file_path
     SBERT_SIMILARITIES_FILE_PATH: Path = Path(f"output/similarities/temporal_bert/{model_name}/{eval_id}_temporal_bert_similarities.json")
     create_folders(SBERT_SIMILARITIES_FILE_PATH.parent)
@@ -51,4 +51,4 @@ def evaluate_temporal_bert(model_name: str, model_path: str, batch_size: int, ma
         for e in data:
             ground_truth.append(e["answer"])
 
-    print(compute_accuracy(ground_truth, similarities_list, top_k))
+    print(compute_accuracy(ground_truth, similarities_list, top_k, metric))
