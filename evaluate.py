@@ -10,7 +10,7 @@ def main():
     parser.add_argument("--benchmark", type=str, required=True, help="Benchmark to use for evaluation")
     parser.add_argument("--eval_id", type=int, required=True, help="Evaluation ID to identify the experiment")
     parser.add_argument("--top_k", type=int, default=1, help="Value of k for top-k accuracy")
-    parser.add_argument("--metric", type=str, default="top", choices=["top", "mrr", "ndcg", "precision", "recall", "f1"], help="Metric to use for evaluation")
+    parser.add_argument("--metric", type=str, default="top", choices=["all", "top", "mrr", "ndcg", "precision", "recall", "f1"], help="Metric to use for evaluation")
     parser.add_argument("--skip", action="store_true", help="Skip model evaluation")
     args = parser.parse_args()
 
