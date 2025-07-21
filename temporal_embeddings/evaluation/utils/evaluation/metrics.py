@@ -9,7 +9,7 @@ def compute_accuracy(
 ) -> Dict[str, float]:
     if metric == 'all':
         metrics = ['top', 'mrr', 'ndcg', 'precision', 'recall', 'f1']
-        results = {m: compute_single_metric(m) for m in metrics}
+        results = {m: compute_single_metric(first_list, second_list, top_k, m) for m in metrics}
         return results
     else:
         return {metric: compute_single_metric(first_list, second_list, top_k, metric)}
