@@ -22,7 +22,7 @@ def evaluate_model(model_name: str, model_path: str, batch_size: int, max_seq_le
         evaluate_alibaba()
     
     elif model_name == "salesforce":
-        evaluate_salesforce(dataset_file_path, eval_id, top_k)
+        evaluate_salesforce(dataset_file_path, eval_id, top_k, metric, skip)
 
     else:
         evaluate_sentence_transformer(model_name, max_seq_len, dataset_file_path, eval_id, top_k, metric, skip)

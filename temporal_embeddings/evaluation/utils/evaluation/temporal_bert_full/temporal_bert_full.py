@@ -119,7 +119,7 @@ def evaluate_temporal_bert_full(model_name: str, model_path: str, batch_size: in
     merged_list = [[(x + (10*y)) for x, y in zip(sublist1, sublist2)] for sublist1, sublist2 in zip(list1, list2)]
 
     similarities_list: List[List[float]] = merged_list
-    ground_truth: List[int] = []
+    ground_truth: List[List[int]] = []
 
     with open(GROUND_TRUTH_FILE_PATH, "r") as f:
         data: List[dict] = json.load(f)

@@ -44,8 +44,8 @@ def evaluate_sentence_transformer(model_name: str, max_seq_len: int, dataset_fil
         with similarities_file_path.open("w", encoding="utf-8") as g:
             json.dump(output_similarities, g, indent=4, ensure_ascii=False)
 
-    ground_truth: List[int] = []
-    
+    ground_truth: List[List[int]] = []
+
     with dataset_file_path.open("r", encoding="utf-8") as f:
         data: List[Dict] = json.load(f)
 
