@@ -1,6 +1,7 @@
 from typing import Dict, List
 from pathlib import Path
 import json
+from math import ceil
 
 from sentence_transformers import SentenceTransformer, util
 from tqdm import tqdm
@@ -11,6 +12,15 @@ from temporal_embeddings.evaluation.utils.evaluation.metrics import compute_metr
 
 def get_detailed_instruct(task_description: str, query: str) -> str:
     return f'Instruct: {task_description}\nQuery: {query}'
+
+def encode_in_batches(model, texts_to_encode: List[str], batch_size: int = 32) -> List[List[float]]:
+    """Encode texts in batches to optimize memory usage."""
+    encoded_embeddings = []
+    num_batches = ceil(len(texts_to_encode) / batch_size)
+    for i in tqdm(range(num_batches), desc="Encoding batches"):
+        batch = texts_to_encode[i * batch_size:(i + 1) * batch_size]
+        encoded_embeddings.extend(model.encode(batch, show_progress_bar=False))
+    return encoded_embeddings
 
 def evaluate_salesforce(benchmark_file_path: Path, eval_id: int, top_k: int, metric: str, skip: bool) -> None:
     model_name = "Salesforce/SFR-Embedding-Mistral"
@@ -48,7 +58,7 @@ def evaluate_salesforce(benchmark_file_path: Path, eval_id: int, top_k: int, met
             
             if texts_to_encode:
                 print(f"Encoding {len(texts_to_encode)} unique texts...")
-                new_embeddings = model.encode(texts_to_encode, show_progress_bar=True)
+                new_embeddings = encode_in_batches(model, texts_to_encode, batch_size=32)
                 for t, emb in zip(texts_to_encode, new_embeddings):
                     embeddings_cache.loc[t] = [emb]
 
