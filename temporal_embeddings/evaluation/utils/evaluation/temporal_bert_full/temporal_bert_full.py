@@ -42,7 +42,6 @@ def evaluate_temporal_bert_full(model_name: str, external_model_name: str, model
 
                 output_similarities.append(output["similarity"])
 
-        create_folders(TEMPORAL_SIMILARITIES_FILE_PATH.parent)
         with TEMPORAL_SIMILARITIES_FILE_PATH.open("w", encoding="utf-8") as g:
             json.dump(output_similarities, g, indent=4, ensure_ascii=False)
 
@@ -74,8 +73,6 @@ def evaluate_temporal_bert_full(model_name: str, external_model_name: str, model
                     similarities.append(float(util.cos_sim(question_emb, paragraph_emb)[0].item()))
 
                 output_similarities.append(similarities)
-
-        create_folders(EXTERNAL_SIMILARITIES_FILE_PATH.parent)
 
         with EXTERNAL_SIMILARITIES_FILE_PATH.open("w", encoding="utf-8") as g:
             json.dump(output_similarities, g, indent=4, ensure_ascii=False)
@@ -130,9 +127,9 @@ def evaluate_temporal_bert_full(model_name: str, external_model_name: str, model
                 if arr.max() - arr.min() == 0:
                     normalized.append([0.0 for _ in arr])
             
-            else:
-                norm = (arr - arr.min()) / (arr.max() - arr.min())
-                normalized.append(norm.tolist())
+                else:
+                    norm = (arr - arr.min()) / (arr.max() - arr.min())
+                    normalized.append(norm.tolist())
             
             return normalized
 
