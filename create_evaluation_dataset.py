@@ -87,10 +87,10 @@ def create_evaluation_dataset(dataset_name):
         output_path = base / "processed_ts_retriever.json"
 
         with query_path.open("r", encoding="utf-8") as f:
-            questions = [q for q in json.load(f) if (len(q["query"]) <= 400) and all(len(t) <= 400 for t in q["positive_text"])]
+            questions = [q[:400] for q in json.load(f)]
 
         with doc_path.open("r", encoding="utf-8") as f:
-            paragraphs = [p for p in json.load(f) if len(p) <= 400]
+            paragraphs = [p[:400] for p in json.load(f)]
 
         output = []
 
@@ -126,7 +126,7 @@ def create_evaluation_dataset(dataset_name):
 
         print(f"Processed dataset saved to: {output_path}")
 
-    elif dataset_name.lower().startswith("human_annotated_test"):
+    elif dataset_name.lower().startswith("time_sensitive_qa"):
         main_folder = Path("data/evaluation/time_sensitive_qa")
         input_path = main_folder / "human_annotated_test.json"
         output_file = main_folder / "processed_human_annotated_test.json"
@@ -137,19 +137,23 @@ def create_evaluation_dataset(dataset_name):
             data = json.load(infile)
 
         processed_data = []
+        
         for item in data:
-            paragraphs = item.get("paras", [])
+            paragraphs = [p[:400] for p in item.get("paras", [])]
+            
             for q_pair in item.get("questions", []):
-                question_text = q_pair[0]
+                question_text = q_pair[0][:400]
                 answers = q_pair[1]
-                # If there are multiple answers, process each one
+                
                 for ans in answers:
                     para_idx = ans.get("para", 0)
+                    
                     entry = {
                         "question": question_text,
                         "paragraphs": paragraphs,
                         "answer": [para_idx]
                     }
+                    
                     processed_data.append(entry)
 
         with output_file.open("w", encoding="utf-8") as outfile:
