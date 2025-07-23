@@ -32,4 +32,7 @@ def get_dataset_file_path(benchmark: str) -> Path:
     elif benchmark == "ts_retriever":
         dataset_file_path = Path("data/evaluation/ts_retriever/processed_ts_retriever.json")
 
+    elif benchmark == "temp_reason_l1":
+        dataset_file_path = Path("data/evaluation/temp_reason_l1/processed_data.json")
+
     return dataset_file_path
