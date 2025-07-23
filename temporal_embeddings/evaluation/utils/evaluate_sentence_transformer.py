@@ -6,7 +6,7 @@ from tqdm import tqdm
 from sentence_transformers import SentenceTransformer, util
 
 from temporal_embeddings.utils.os.folder_management import create_folders
-from temporal_embeddings.evaluation.utils.evaluation.metrics import compute_accuracy
+from temporal_embeddings.evaluation.utils.evaluation.metrics import compute_metrics
 
 def evaluate_sentence_transformer(model_name: str, max_seq_len: int, dataset_file_path: Path, eval_id: int, top_k: int, metric: str, skip: bool) -> None:
     model: SentenceTransformer = SentenceTransformer(model_name)
@@ -57,4 +57,4 @@ def evaluate_sentence_transformer(model_name: str, max_seq_len: int, dataset_fil
     with similarities_file_path.open("r", encoding="utf-8") as f:
         output_similarities = json.load(f)
 
-    print(compute_accuracy(ground_truth, output_similarities, top_k, metric))
+    print(compute_metrics(ground_truth, output_similarities, top_k, metric))

@@ -6,53 +6,48 @@ from tqdm import tqdm
 
 from temporal_embeddings.evaluation.utils.evaluation.temporal_bert.inference import Inference
 from temporal_embeddings.utils.os.folder_management import create_folders
-from temporal_embeddings.evaluation.utils.evaluation.metrics import compute_accuracy
+from temporal_embeddings.evaluation.utils.evaluation.metrics import compute_metrics
 
-def evaluate_temporal_bert(model_name: str, model_path: str, batch_size: int, max_seq_len: int, dataset_file_path: Path, eval_id: int, top_k: int, metric: str, skip: bool) -> None:
-    GROUND_TRUTH_FILE_PATH: Path = dataset_file_path
-    SBERT_SIMILARITIES_FILE_PATH: Path = Path(f"output/similarities/temporal_bert/{model_name}/{eval_id}_temporal_bert_similarities.json")
-    create_folders(SBERT_SIMILARITIES_FILE_PATH.parent)
+def evaluate_temporal_bert(model_name: str, model_path: Path, batch_size: int, max_seq_len: int, benchmark_file_path: Path, eval_id: int, top_k: int, metric: str, skip: bool = False) -> None:
+    OUTPUT_SIMILARITIES_FILE_PATH: Path = Path(f"output/similarities/{benchmark_file_path.stem}/{model_name}/{model_path.stem}/{eval_id}_similarities.json")
+    create_folders(OUTPUT_SIMILARITIES_FILE_PATH.parent)
 
     if not skip:
-        similarities_list: List[List[int]] = []
+        output_similarities: List[List[float]] = []
 
         reference_date: str = "09 august 2024"
 
-        with GROUND_TRUTH_FILE_PATH.open("r", encoding="utf-8") as f:
-            data = json.load(f)
+        with benchmark_file_path.open("r", encoding="utf-8") as f:
+            benchmark_data = json.load(f)
 
             inference: Inference = Inference(model_name=model_name, model_path=model_path, batch_size=batch_size, max_seq_len=max_seq_len)
 
-            for element in tqdm(data):
-                question: str = element["question"]
+            for benchmark_item in tqdm(benchmark_data):
+                question: str = benchmark_item["question"]
 
-                second_sentences: List[str] = element["paragraphs"]
-                first_sentences: List[str] = [question] * len(second_sentences)
-                reference_dates: List[str] = [reference_date] * len(second_sentences)
-                ground_truth: List[float] = [0.0] * len(second_sentences)
+                paragraphs: List[str] = benchmark_item["paragraphs"]
+                questions: List[str] = [question] * len(paragraphs)
+                reference_dates: List[str] = [reference_date] * len(paragraphs)
+                ground_truth: List[float] = [0.0] * len(paragraphs)
 
-                inference.set_sentences(first_sentences, reference_dates, second_sentences, reference_dates, ground_truth)
-
-                similarities: List[float] = None
+                inference.set_sentences(questions, reference_dates, paragraphs, reference_dates, ground_truth)
 
                 output = inference.evaluate()
+                
+                output_similarities.append(output["similarity"])
 
-                similarities = output["similarity"]
+        with OUTPUT_SIMILARITIES_FILE_PATH.open("w", encoding="utf-8") as g:
+            json.dump(output_similarities, g, indent=4, ensure_ascii=False)
 
-                similarities_list.append(similarities)
-
-        with SBERT_SIMILARITIES_FILE_PATH.open("w", encoding="utf-8") as g:
-            json.dump(similarities_list, g, indent=4, ensure_ascii=False)
-
-    with SBERT_SIMILARITIES_FILE_PATH.open("r", encoding="utf-8") as f:
+    with OUTPUT_SIMILARITIES_FILE_PATH.open("r", encoding="utf-8") as f:
         similarities_list: List[List[float]] = json.load(f)
     
-    ground_truth: List[int] = []
+    ground_truth: List[List[int]] = []
 
-    with open(GROUND_TRUTH_FILE_PATH, "r") as f:
-        data: List[dict] = json.load(f)
+    with open(benchmark_file_path, "r") as f:
+        benchmark_data: List[dict] = json.load(f)
 
-        for e in data:
+        for e in benchmark_data:
             ground_truth.append(e["answer"])
 
-    print(compute_accuracy(ground_truth, similarities_list, top_k, metric))
+    print(compute_metrics(ground_truth, similarities_list, top_k, metric))

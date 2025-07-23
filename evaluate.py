@@ -1,5 +1,7 @@
-from temporal_embeddings.evaluation.evaluate import evaluate_model
 import argparse
+from pathlib import Path
+
+from temporal_embeddings.evaluation.evaluate import evaluate_model
 
 def main():
     parser = argparse.ArgumentParser(description="Evaluate a model")
@@ -12,9 +14,10 @@ def main():
     parser.add_argument("--top_k", type=int, default=1, help="Value of k for top-k accuracy")
     parser.add_argument("--metric", type=str, default="top", choices=["all", "top", "mrr", "ndcg", "precision", "recall", "f1"], help="Metric to use for evaluation")
     parser.add_argument("--skip", action="store_true", help="Skip model evaluation")
+    parser.add_argument("--external_model_name", type=str, default="", help="Name of external model to integrate with temporal embeddings")
     args = parser.parse_args()
 
-    evaluate_model(args.model_name, args.model_path, args.batch_size, args.max_seq_len, args.benchmark, args.eval_id, args.top_k, args.metric, args.skip)
+    evaluate_model(args.model_name, args.external_model_name, Path(args.model_path), args.batch_size, args.max_seq_len, args.benchmark, args.eval_id, args.top_k, args.metric, args.skip)
 
 if __name__ == "__main__":
     main()

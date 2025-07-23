@@ -1,8 +1,10 @@
+from typing import List, Dict
+from pathlib import Path
+
 import torch
 from torch.utils.data import DataLoader
 from transformers.tokenization_utils import BatchEncoding, PreTrainedTokenizer
 from transformers import AutoTokenizer
-from typing import List, Dict
 
 from temporal_embeddings.model.gauss_model import GaussModel, GaussOutput
 from temporal_embeddings.evaluation.utils.evaluation.temporal_bert.parameters import INFERENCE_DEVICE, NUM_WORKERS, SPECIAL_TOKENS
@@ -10,9 +12,9 @@ from temporal_embeddings.evaluation.utils.evaluation.temporal_bert.similarity im
 from temporal_embeddings.utils.positional_encoding import positional_encoding
 
 class Inference:
-    def __init__(self, model_name: str, model_path: str, batch_size: int, max_seq_len: int):
+    def __init__(self, model_name: str, model_path: Path, batch_size: int, max_seq_len: int):
         self.model_name: str = model_name
-        self.model_path: str = model_path
+        self.model_path: Path = model_path
         self.batch_size: int = batch_size
         self.max_seq_len: int = max_seq_len
 
@@ -20,7 +22,7 @@ class Inference:
             self.model_name = "sentence-transformers/all-MiniLM-L6-v2"
 
         self.model: GaussModel = GaussModel(self.model_name, False).eval().to(INFERENCE_DEVICE)
-        self.model.load_state_dict(torch.load(self.model_path, map_location=torch.device(INFERENCE_DEVICE)))
+        self.model.load_state_dict(torch.load(str(self.model_path), map_location=torch.device(INFERENCE_DEVICE)))
 
         self.tokenizer: PreTrainedTokenizer = AutoTokenizer.from_pretrained(self.model_name, model_max_length = self.max_seq_len, use_fast = False)
 

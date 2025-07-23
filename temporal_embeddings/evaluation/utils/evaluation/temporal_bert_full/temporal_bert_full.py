@@ -9,66 +9,62 @@ import numpy as np
 from temporal_embeddings.evaluation.utils.evaluation.temporal_bert.inference import Inference
 from temporal_embeddings.evaluation.utils.evaluation.temporal_bert.parameters import MAX_SEQ_LEN
 from temporal_embeddings.utils.os.folder_management import create_folders
-from temporal_embeddings.evaluation.utils.evaluation.metrics import compute_accuracy
+from temporal_embeddings.evaluation.utils.evaluation.metrics import compute_metrics
 
-def evaluate_temporal_bert_full(model_name: str, model_path: str, batch_size: int, max_seq_len: int, dataset_file_path: Path, eval_id: int, top_k: int, metric: str, skip: bool = False) -> None:
-    SBERT_SIMILARITIES_FILE_PATH: Path = Path(f"output/similarities/temporal_bert_full/{model_name}/{eval_id}_temporal_bert_full_similarities.json")
-    create_folders(SBERT_SIMILARITIES_FILE_PATH.parent)
-    SIMILARITIES_FILE_PATH: Path = Path(f"output/similarities/temporal_bert_full/{model_name}/{eval_id}_similarities.json")
-    create_folders(SIMILARITIES_FILE_PATH.parent)
-    GROUND_TRUTH_FILE_PATH: Path = dataset_file_path
+def evaluate_temporal_bert_full(model_name: str, external_model_name: str, model_path: Path, batch_size: int, max_seq_len: int, benchmark_file_path: Path, eval_id: int, top_k: int, metric: str, skip: bool = False) -> None:
+    TEMPORAL_SIMILARITIES_FILE_PATH: Path = Path(f"output/similarities/{benchmark_file_path.stem}/{model_name}/{model_path.stem}/{eval_id}_similarities.json")
+    create_folders(TEMPORAL_SIMILARITIES_FILE_PATH.parent)
 
-    def evaluate_temporal_bert(model_name: str, model_path: str, batch_size: int, max_seq_len: int) -> None:
-        similarities_list: List[List[float]] = []
+    EXTERNAL_SIMILARITIES_FILE_PATH: Path = Path(f"output/similarities/{benchmark_file_path.stem}/{external_model_name}/{model_path.stem}/{eval_id}_similarities.json")
+    create_folders(EXTERNAL_SIMILARITIES_FILE_PATH.parent)
+
+    def run_temporal_bert(model_name: str, model_path: Path, batch_size: int, max_seq_len: int) -> None:
+        output_similarities: List[List[float]] = []
 
         reference_date: str = "09 august 2024"
 
-        with GROUND_TRUTH_FILE_PATH.open("r", encoding="utf-8") as f:
-            data = json.load(f)
+        with benchmark_file_path.open("r", encoding="utf-8") as f:
+            benchmark_data = json.load(f)
 
             inference: Inference = Inference(model_name=model_name, model_path=model_path, batch_size=batch_size, max_seq_len=max_seq_len)
 
-            for element in tqdm(data):
-                question: str = element["question"]
+            for benchmark_item in tqdm(benchmark_data):
+                question: str = benchmark_item["question"]
 
-                second_sentences: List[str] = element["paragraphs"]
-                first_sentences: List[str] = [question] * len(second_sentences)
-                reference_dates: List[str] = [reference_date] * len(second_sentences)
-                ground_truth: List[float] = [0.0] * len(second_sentences)
+                paragraphs: List[str] = benchmark_item["paragraphs"]
+                questions: List[str] = [question] * len(paragraphs)
+                reference_dates: List[str] = [reference_date] * len(paragraphs)
+                ground_truth: List[float] = [0.0] * len(paragraphs)
 
-                inference.set_sentences(first_sentences, reference_dates, second_sentences, reference_dates, ground_truth)
-
-                similarities: List[float] = None
+                inference.set_sentences(questions, reference_dates, paragraphs, reference_dates, ground_truth)
 
                 output = inference.evaluate()
 
-                similarities = output["similarity"]
+                output_similarities.append(output["similarity"])
 
-                similarities_list.append(similarities)
+        create_folders(TEMPORAL_SIMILARITIES_FILE_PATH.parent)
+        with TEMPORAL_SIMILARITIES_FILE_PATH.open("w", encoding="utf-8") as g:
+            json.dump(output_similarities, g, indent=4, ensure_ascii=False)
 
-        create_folders(SBERT_SIMILARITIES_FILE_PATH.parent)
-        with SBERT_SIMILARITIES_FILE_PATH.open("w", encoding="utf-8") as g:
-            json.dump(similarities_list, g, indent=4, ensure_ascii=False)
-
-    def evaluate_model(model_name: str) -> None:
+    def run_external_model(model_name: str) -> None:
         model: SentenceTransformer = SentenceTransformer(model_name)
         model.max_seq_length = MAX_SEQ_LEN
 
         output_similarities: List[List[float]] = []
 
-        data: List[Dict] = []
-        ground_truth: List[int] = []
+        benchmark_data: List[Dict] = []
+        ground_truth: List[List[int]] = []
 
-        with GROUND_TRUTH_FILE_PATH.open("r", encoding="utf-8") as f:
-            data = json.load(f)
+        with benchmark_file_path.open("r", encoding="utf-8") as f:
+            benchmark_data = json.load(f)
 
-            for element in tqdm(data):
-                ground_truth.append(element["answer"])
+            for benchmark_element in tqdm(benchmark_data):
+                ground_truth.append(benchmark_element["answer"])
 
-                question: str = element["question"]
+                question: str = benchmark_element["question"]
                 question_emb = model.encode(question, convert_to_tensor=True)
 
-                paragraphs: List[str] = element["paragraphs"]
+                paragraphs: List[str] = benchmark_element["paragraphs"]
 
                 similarities: List[float] = []
                 
@@ -79,18 +75,18 @@ def evaluate_temporal_bert_full(model_name: str, model_path: str, batch_size: in
 
                 output_similarities.append(similarities)
 
-        create_folders(SIMILARITIES_FILE_PATH.parent)
-        
-        with SIMILARITIES_FILE_PATH.open("w", encoding="utf-8") as g:
+        create_folders(EXTERNAL_SIMILARITIES_FILE_PATH.parent)
+
+        with EXTERNAL_SIMILARITIES_FILE_PATH.open("w", encoding="utf-8") as g:
             json.dump(output_similarities, g, indent=4, ensure_ascii=False)
 
     if not skip:
-        evaluate_model("BAAI/bge-large-en-v1.5")
-        evaluate_temporal_bert(model_name, model_path, batch_size, max_seq_len)
+        run_external_model(external_model_name)
+        run_temporal_bert(model_name, model_path, batch_size, max_seq_len)
 
-    with SBERT_SIMILARITIES_FILE_PATH.open("r", encoding="utf-8") as f1, SIMILARITIES_FILE_PATH.open("r", encoding="utf-8") as f2:
-        list1 = json.load(f1)
-        list2 = json.load(f2)
+    with TEMPORAL_SIMILARITIES_FILE_PATH.open("r", encoding="utf-8") as f1, EXTERNAL_SIMILARITIES_FILE_PATH.open("r", encoding="utf-8") as f2:
+        temporal_similarities = json.load(f1)
+        external_similarities = json.load(f2)
 
     # def rank_list(values: List[float]) -> List[int]:
     #     sorted_indices = sorted(range(len(values)), key=lambda x: values[x], reverse=True)
@@ -113,17 +109,18 @@ def evaluate_temporal_bert_full(model_name: str, model_path: str, batch_size: in
                 normalized.append(norm.tolist())
         return normalized
 
-    list1 = normalize_list(list1)
-    list2 = normalize_list(list2)
-    
-    merged_list = [[(x + (10*y)) for x, y in zip(sublist1, sublist2)] for sublist1, sublist2 in zip(list1, list2)]
+    temporal_similarities = normalize_list(temporal_similarities)
+    external_similarities = normalize_list(external_similarities)
 
-    similarities_list: List[List[float]] = merged_list
+    merged_list = [[(x + (10*y)) for x, y in zip(sublist1, sublist2)] for sublist1, sublist2 in zip(temporal_similarities, external_similarities)]
+
+    merged_similarities: List[List[float]] = merged_list
     ground_truth: List[List[int]] = []
 
-    with open(GROUND_TRUTH_FILE_PATH, "r") as f:
-        data: List[dict] = json.load(f)
-        for e in data:
+    with open(benchmark_file_path, "r") as f:
+        benchmark_data: List[dict] = json.load(f)
+
+        for e in benchmark_data:
             ground_truth.append(e["answer"])
 
-    print(compute_accuracy(ground_truth, similarities_list, top_k, metric))
+    print(compute_metrics(ground_truth, merged_similarities, top_k, metric))

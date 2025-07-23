@@ -1,7 +1,7 @@
 from typing import List, Literal, Dict, Union
 import numpy as np
 
-def compute_accuracy(
+def compute_metrics(
     first_list: List[List[int]],  # list of relevant indices per query
     second_list: List[List[float]],  # similarity scores per query
     top_k: int,
