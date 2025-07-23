@@ -139,9 +139,10 @@ def evaluate_temporal_bert_full(model_name: str, external_model_name: str, model
         temporal_similarities = normalize_list(temporal_similarities)
         external_similarities = normalize_list(external_similarities)
 
-        merged_list = [[(x + (10*y)) for x, y in zip(sublist1, sublist2)] for sublist1, sublist2 in zip(temporal_similarities, external_similarities)]
+        merged_list = [[(x + (2*y)) for x, y in zip(sublist1, sublist2)] for sublist1, sublist2 in zip(temporal_similarities, external_similarities)]
 
         merged_similarities: List[List[float]] = merged_list
+        
         ground_truth: List[List[int]] = []
 
         with open(benchmark_file_path, "r") as f:
