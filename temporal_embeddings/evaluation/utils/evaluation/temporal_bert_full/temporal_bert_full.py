@@ -9,9 +9,9 @@ import numpy as np
 from temporal_embeddings.evaluation.utils.evaluation.temporal_bert.inference import Inference
 from temporal_embeddings.evaluation.utils.evaluation.temporal_bert.parameters import MAX_SEQ_LEN
 from temporal_embeddings.utils.os.folder_management import create_folders
-from temporal_embeddings.evaluation.utils.evaluation.metrics import compute_metrics
+from temporal_embeddings.evaluation.utils.evaluation.metrics import compute_metrics, compute_metrics_ranks
 
-def evaluate_temporal_bert_full(model_name: str, external_model_name: str, model_path: Path, batch_size: int, max_seq_len: int, benchmark_file_path: Path, eval_id: int, top_k: int, metric: str, skip: bool = False) -> None:
+def evaluate_temporal_bert_full(model_name: str, external_model_name: str, model_path: Path, batch_size: int, max_seq_len: int, benchmark_file_path: Path, eval_id: int, top_k: int, metric: str, skip: bool = False, use_ranking: bool = False) -> None:
     TEMPORAL_SIMILARITIES_FILE_PATH: Path = Path(f"output/similarities/{benchmark_file_path.stem}/{model_name}/{model_path.stem}/{eval_id}_similarities.json")
     create_folders(TEMPORAL_SIMILARITIES_FILE_PATH.parent)
 
@@ -88,39 +88,66 @@ def evaluate_temporal_bert_full(model_name: str, external_model_name: str, model
         temporal_similarities = json.load(f1)
         external_similarities = json.load(f2)
 
-    # def rank_list(values: List[float]) -> List[int]:
-    #     sorted_indices = sorted(range(len(values)), key=lambda x: values[x], reverse=True)
-    #     ranks = [0] * len(values)
-    #     for rank, index in enumerate(sorted_indices):
-    #         ranks[index] = rank
-    #     return ranks
+    if use_ranking:
+        def borda_count_fusion(temporal_similarities: List[List[float]], external_similarities: List[List[float]]) -> List[List[int]]:
+            merged_ranks = []
 
-    # list1 = [rank_list(sublist) for sublist in list1]
-    # list2 = [rank_list(sublist) for sublist in list2]
+            for temp_sim, ext_sim in zip(temporal_similarities, external_similarities):
+                scores = {}
+                
+                temp_ranks: List[float] = sorted(range(len(temp_sim)), key=lambda i: temp_sim[i], reverse=True)
+                ext_ranks: List[float] = sorted(range(len(ext_sim)), key=lambda i: ext_sim[i], reverse=True)
 
-    def normalize_list(lst: List[List[float]]) -> List[List[float]]:
-        normalized = []
-        for sublist in lst:
-            arr = np.array(sublist)
-            if arr.max() - arr.min() == 0:
-                normalized.append([0.0 for _ in arr])
+                for rank, idx in enumerate(temp_ranks):
+                    scores[idx] = scores.get(idx, 0) + (len(temp_ranks) - rank)
+
+                for rank, idx in enumerate(ext_ranks):
+                    scores[idx] = scores.get(idx, 0) + (len(ext_ranks) - rank)
+
+                sorted_indices = sorted(scores.items(), key=lambda x: x[1], reverse=True)
+                merged_ranks.append([idx for idx, _ in sorted_indices])
+
+            return merged_ranks
+
+        ranks: List[List[int]] = borda_count_fusion(temporal_similarities, external_similarities)
+        
+        ground_truth: List[List[int]] = []
+
+        with open(benchmark_file_path, "r") as f:
+            benchmark_data: List[dict] = json.load(f)
+
+            for e in benchmark_data:
+                ground_truth.append(e["answer"])
+
+        print(compute_metrics_ranks(ground_truth, ranks, top_k, metric))
+
+    else:
+        def normalize_list(lst: List[List[float]]) -> List[List[float]]:
+            normalized = []
+            
+            for sublist in lst:
+                arr = np.array(sublist)
+                if arr.max() - arr.min() == 0:
+                    normalized.append([0.0 for _ in arr])
+            
             else:
                 norm = (arr - arr.min()) / (arr.max() - arr.min())
                 normalized.append(norm.tolist())
-        return normalized
+            
+            return normalized
 
-    temporal_similarities = normalize_list(temporal_similarities)
-    external_similarities = normalize_list(external_similarities)
+        temporal_similarities = normalize_list(temporal_similarities)
+        external_similarities = normalize_list(external_similarities)
 
-    merged_list = [[(x + (10*y)) for x, y in zip(sublist1, sublist2)] for sublist1, sublist2 in zip(temporal_similarities, external_similarities)]
+        merged_list = [[(x + (10*y)) for x, y in zip(sublist1, sublist2)] for sublist1, sublist2 in zip(temporal_similarities, external_similarities)]
 
-    merged_similarities: List[List[float]] = merged_list
-    ground_truth: List[List[int]] = []
+        merged_similarities: List[List[float]] = merged_list
+        ground_truth: List[List[int]] = []
 
-    with open(benchmark_file_path, "r") as f:
-        benchmark_data: List[dict] = json.load(f)
+        with open(benchmark_file_path, "r") as f:
+            benchmark_data: List[dict] = json.load(f)
 
-        for e in benchmark_data:
-            ground_truth.append(e["answer"])
+            for e in benchmark_data:
+                ground_truth.append(e["answer"])
 
-    print(compute_metrics(ground_truth, merged_similarities, top_k, metric))
+        print(compute_metrics(ground_truth, merged_similarities, top_k, metric))

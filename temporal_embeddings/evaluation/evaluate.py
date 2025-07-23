@@ -8,14 +8,14 @@ from temporal_embeddings.evaluation.utils.evaluation.salesforce.salesforce_evalu
 from temporal_embeddings.evaluation.utils.dataset_file_path import get_dataset_file_path
 from temporal_embeddings.evaluation.utils.evaluate_sentence_transformer import evaluate_sentence_transformer
 
-def evaluate_model(model_name: str, external_model_name: str, model_path: Path, batch_size: int, max_seq_len: int, benchmark: str, eval_id: int, top_k: int, metric: str, skip: bool = False) -> None:
+def evaluate_model(model_name: str, external_model_name: str, model_path: Path, batch_size: int, max_seq_len: int, benchmark: str, eval_id: int, top_k: int, metric: str, skip: bool = False, use_ranking: bool = False) -> None:
     dataset_file_path: Path = get_dataset_file_path(benchmark)
 
     if model_name in ["temporal_bert", "all-minilm-l6-v2"]:
         evaluate_temporal_bert(model_name, model_path, batch_size, max_seq_len, dataset_file_path, eval_id, top_k, metric, skip)
     
     elif model_name in ["temporal_bert_full", "all-minilm-l6-v2-full"]:
-        evaluate_temporal_bert_full(model_name, external_model_name, model_path, batch_size, max_seq_len, dataset_file_path, eval_id, top_k, metric, skip)
+        evaluate_temporal_bert_full(model_name, external_model_name, model_path, batch_size, max_seq_len, dataset_file_path, eval_id, top_k, metric, skip, use_ranking)
 
     elif model_name == "mistral":
         evaluate_mistral()
