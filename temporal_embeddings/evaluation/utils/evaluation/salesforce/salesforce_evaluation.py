@@ -13,7 +13,7 @@ from temporal_embeddings.evaluation.utils.evaluation.metrics import compute_metr
 def get_detailed_instruct(task_description: str, query: str) -> str:
     return f'Instruct: {task_description}\nQuery: {query}'
 
-def encode_in_batches(model, texts_to_encode: List[str], batch_size: int = 32) -> List[List[float]]:
+def encode_in_batches(model, texts_to_encode: List[str], batch_size: int = 128) -> List[List[float]]:
     """Encode texts in batches to optimize memory usage."""
 
     encoded_embeddings = []

@@ -161,6 +161,47 @@ def create_evaluation_dataset(dataset_name):
 
         print(f"Processed dataset saved to: {output_file}")
 
+    elif dataset_name.lower().startswith("temp_reason_l1"):
+        main_folder = Path("data/evaluation/temp_reason_l1")
+        input_path = main_folder / "data.json"
+        output_path = main_folder / "processed_data.json"
+        
+        main_folder.mkdir(parents=True, exist_ok=True)
+        
+        with input_path.open("r", encoding="utf-8") as f:
+            data = json.load(f)
+            
+        processed_data = []
+        
+        for item in data:
+            paragraphs = []
+
+            correct_para = item["text_answers"]["text"][0]
+            paragraphs.append(correct_para)
+            
+            for _ in range(9):
+                random_item = random.choice(data)
+                para = random_item["text_answers"]["text"][0]
+                
+                if para not in paragraphs:
+                    paragraphs.append(para)
+            
+            random.shuffle(paragraphs)
+            correct_idx = paragraphs.index(correct_para)
+            
+            entry = {
+                "question": item["question"],
+                "paragraphs": paragraphs,
+                "answer": [correct_idx]
+            }
+            
+            processed_data.append(entry)
+        
+        with output_path.open("w", encoding="utf-8") as f:
+            json.dump(processed_data, f, ensure_ascii=False, indent=2)
+            
+        print(f"Processed dataset saved to: {output_path}")
+        
     else:
         print(f"Dataset '{dataset_name}' is not supported.")
 
