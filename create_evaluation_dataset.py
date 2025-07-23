@@ -87,10 +87,10 @@ def create_evaluation_dataset(dataset_name):
         output_path = base / "processed_ts_retriever.json"
 
         with query_path.open("r", encoding="utf-8") as f:
-            questions = json.load(f)
+            questions = [q for q in json.load(f) if (len(q["query"]) <= 400) and all(len(t) <= 400 for t in q["positive_text"])]
 
         with doc_path.open("r", encoding="utf-8") as f:
-            paragraphs = json.load(f)
+            paragraphs = [p for p in json.load(f) if len(p) <= 400]
 
         output = []
 
