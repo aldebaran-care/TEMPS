@@ -15,6 +15,11 @@ def get_detailed_instruct(task_description: str, query: str) -> str:
 
 def encode_in_batches(model, texts_to_encode: List[str], batch_size: int = 32) -> List[List[float]]:
     """Encode texts in batches to optimize memory usage."""
+
+    if texts_to_encode:
+        max_length = max(len(text) for text in texts_to_encode)
+        print(f"Max length of texts to encode: {max_length}")
+
     encoded_embeddings = []
     num_batches = ceil(len(texts_to_encode) / batch_size)
     for i in tqdm(range(num_batches), desc="Encoding batches"):
