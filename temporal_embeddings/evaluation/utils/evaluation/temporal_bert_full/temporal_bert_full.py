@@ -99,7 +99,7 @@ def evaluate_temporal_bert_full(model_name: str, external_model_name: str, model
                     scores[idx] = scores.get(idx, 0) + (len(temp_ranks) - rank)
 
                 for rank, idx in enumerate(ext_ranks):
-                    scores[idx] = scores.get(idx, 0) + (len(ext_ranks) - rank)
+                    scores[idx] = scores.get(idx, 0) + ((len(ext_ranks) - rank) * 2)
 
                 sorted_indices = sorted(scores.items(), key=lambda x: x[1], reverse=True)
                 merged_ranks.append([idx for idx, _ in sorted_indices])
