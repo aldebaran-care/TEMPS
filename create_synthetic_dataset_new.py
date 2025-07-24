@@ -1,7 +1,9 @@
 import random
-import pandas as pd
 from datetime import datetime, timedelta
 from dateutil.relativedelta import relativedelta
+import argparse
+
+import pandas as pd
 
 from temporal_embeddings.data_utils.utils.dates.compute_distance_dates import compute_distance_dates_same_type
 
@@ -75,5 +77,10 @@ def generate_dataset(n_phrases=100):
     return pd.DataFrame(data)
 
 if __name__ == "__main__":
-    df = generate_dataset(1000000)
-    df.to_csv("synthetic_temporal_dataset.csv", index=False)
+    parser = argparse.ArgumentParser(description='Generate a synthetic temporal dataset.')
+    parser.add_argument('--n_phrases', type=int, default=1000000, help='Number of phrases to generate.')
+    parser.add_argument('--output_file_path', type=str, default="synthetic_temporal_dataset.csv", help='Output file path for the dataset.')
+    args = parser.parse_args()
+
+    df = generate_dataset(args.n_phrases)
+    df.to_csv(args.output_file_path, index=False)
