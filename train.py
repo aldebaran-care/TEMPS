@@ -75,8 +75,6 @@ def main(data_fraction: float, model_name: str, batch_size: int, lr: float, weig
     }
     execution.log(val_metrics)
     best_state_dict = execution.clone_state_dict()
-
-    scaler = torch.cuda.amp.GradScaler()
     
     current_step = 0
 
@@ -88,14 +86,13 @@ def main(data_fraction: float, model_name: str, batch_size: int, lr: float, weig
             current_step += 1
             batch: BatchEncoding = batch.to(DEVICE)
 
-            with torch.cuda.amp.autocast(dtype=DTYPE):
-                sent0_input_ids = batch.sent0.input_ids.to(DEVICE)
-                sent0_attention_mask = batch.sent0.attention_mask.to(DEVICE)
-                sent0_out: GaussOutput = execution.model.forward(input_ids=sent0_input_ids, attention_mask=sent0_attention_mask, dates=batch.sent0_date.to(DEVICE))
+            sent0_input_ids = batch.sent0.input_ids.to(DEVICE)
+            sent0_attention_mask = batch.sent0.attention_mask.to(DEVICE)
+            sent0_out: GaussOutput = execution.model.forward(input_ids=sent0_input_ids, attention_mask=sent0_attention_mask, dates=batch.sent0_date.to(DEVICE))
 
-                sent1_input_ids = batch.sent1.input_ids.to(DEVICE)
-                sent1_attention_mask = batch.sent1.attention_mask.to(DEVICE)
-                sent1_out: GaussOutput = execution.model.forward(input_ids=sent1_input_ids, attention_mask=sent1_attention_mask, dates=batch.sent1_date.to(DEVICE))
+            sent1_input_ids = batch.sent1.input_ids.to(DEVICE)
+            sent1_attention_mask = batch.sent1.attention_mask.to(DEVICE)
+            sent1_out: GaussOutput = execution.model.forward(input_ids=sent1_input_ids, attention_mask=sent1_attention_mask, dates=batch.sent1_date.to(DEVICE))
 
             sim_mat: torch.FloatTensor = asymmetrical_kl_sim(sent0_out.mu, sent0_out.std, sent1_out.mu, sent1_out.std)
             
@@ -105,14 +102,9 @@ def main(data_fraction: float, model_name: str, batch_size: int, lr: float, weig
             train_losses.append(loss.item())
 
             execution.optimizer.zero_grad()
-            scaler.scale(loss).backward()
-            scaler.step(execution.optimizer)
-
-            scale = scaler.get_scale()
-            scaler.update()
-
-            if scale <= scaler.get_scale():
-                execution.lr_scheduler.step()
+            execution.accelerator.backward(loss)
+            execution.optimizer.step()
+            execution.lr_scheduler.step()
             
             if current_step % num_eval_steps == 0:
                 execution.model.eval()

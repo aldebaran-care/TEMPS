@@ -5,6 +5,7 @@ from transformers import AutoTokenizer
 from transformers.tokenization_utils import BatchEncoding, PreTrainedTokenizer
 from transformers.optimization import get_linear_schedule_with_warmup
 from scipy.stats import spearmanr
+from accelerate import Accelerator
 
 from temporal_embeddings.model.gauss_model import GaussModel, GaussOutput
 from temporal_embeddings.parameters.parameters import (
@@ -41,6 +42,12 @@ class Execution():
         self.gauss_data: GaussData = GaussData(self.parameters["input_file_path"], self.tokenizer, self.parameters["batch_size"], data_fraction)
 
         self.optimizer, self.lr_scheduler = self.create_optimizer(model=self.model, train_steps_per_epoch=len(self.gauss_data.train_dataloader))
+
+        self.accelerator = Accelerator()
+
+        self.model, self.optimizer, self.gauss_data.train_dataloader, self.lr_scheduler = self.accelerator.prepare(
+            self.model, self.optimizer, self.gauss_data.train_dataloader, self.lr_scheduler
+        )
 
     def tokenize(self, batch: list[str]) -> BatchEncoding:
         return self.tokenizer(batch, padding=True, truncation=True, return_tensors="pt", max_length=MAX_SEQ_LEN, add_special_tokens=SPECIAL_TOKENS).to(DEVICE)
