@@ -17,13 +17,9 @@ from temporal_embeddings.synthetic_data.utils.mappings.expression_to_text import
 from temporal_embeddings.synthetic_data.utils.dates.generate_random_date import generate_random_date_full
 
 def create_synthetic_dataset(output_file_path: Path = None, size: int = 10) -> None:
-
-    DATA_FOLDER_PATH: Path = output_file_path.parent
-    OUTPUT_FILE_NAME: Path = output_file_path.name
-
     output_data = []
 
-    for i in tqdm(range(size)):
+    for _ in tqdm(range(size)):
         first_random_temporal_expression = generate_random_temporal_expression()
         first_random_temporal_text = expression_to_text(first_random_temporal_expression)
         current_date = generate_random_date_full(START_DATE, END_DATE)
@@ -41,7 +37,7 @@ def create_synthetic_dataset(output_file_path: Path = None, size: int = 10) -> N
 
         sentence = f"[CLS] {first_random_temporal_text} [SEP] {current_text} [SEP]"
         
-        for j in range(4):
+        for _ in range(4):
             second_random_temporal_expression = generate_random_temporal_expression()
             second_random_temporal_text = expression_to_text(second_random_temporal_expression)
             
@@ -50,7 +46,7 @@ def create_synthetic_dataset(output_file_path: Path = None, size: int = 10) -> N
             sentence_target = f"[CLS] {second_random_temporal_text} [SEP] {current_target_text} [SEP]"
             output_data.append((sentence, sentence_target, similarity))
         
-        for j in range(1):
+        for _ in range(1):
             dates = None
             
             if is_offset(first_random_temporal_expression)[0]:
