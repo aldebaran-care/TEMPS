@@ -15,7 +15,7 @@ def evaluate_temporal_bert_full(model_name: str, external_model_name: str, model
     TEMPORAL_SIMILARITIES_FILE_PATH: Path = Path(f"output/similarities/{benchmark_file_path.stem}/{model_name}/{model_path.stem}/{eval_id}_similarities.json")
     create_folders(TEMPORAL_SIMILARITIES_FILE_PATH.parent)
 
-    EXTERNAL_SIMILARITIES_FILE_PATH: Path = Path(f"output/similarities/{benchmark_file_path.stem}/{external_model_name}/{model_path.stem}/{eval_id}_similarities.json")
+    EXTERNAL_SIMILARITIES_FILE_PATH: Path = Path(f"output/similarities/{benchmark_file_path.stem}/{external_model_name}/{eval_id}_similarities.json")
     create_folders(EXTERNAL_SIMILARITIES_FILE_PATH.parent)
 
     def run_temporal_bert(model_name: str, model_path: Path, batch_size: int, max_seq_len: int) -> None:

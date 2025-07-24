@@ -8,10 +8,10 @@ from sentence_transformers import SentenceTransformer, util
 from temporal_embeddings.utils.os.folder_management import create_folders
 from temporal_embeddings.evaluation.utils.evaluation.metrics import compute_metrics
 
-def evaluate_sentence_transformer(model_name: str, max_seq_len: int, dataset_file_path: Path, eval_id: int, top_k: int, metric: str, skip: bool) -> None:
+def evaluate_sentence_transformer(model_name: str, max_seq_len: int, benchmark_file_path: Path, eval_id: int, top_k: int, metric: str, skip: bool) -> None:
     model: SentenceTransformer = SentenceTransformer(model_name)
     model.max_seq_length = max_seq_len
-    similarities_file_path: Path = Path(f"output/similarities/{model_name}/{eval_id}_{model_name}_similarities.json")
+    similarities_file_path: Path = Path(f"output/similarities/{benchmark_file_path.stem}/{model_name}/{eval_id}_similarities.json")
 
     if not skip:
         output_similarities: List[List[float]] = []
@@ -19,7 +19,7 @@ def evaluate_sentence_transformer(model_name: str, max_seq_len: int, dataset_fil
         data: List[Dict] = []
         ground_truth: List[int] = []
 
-        with dataset_file_path.open("r", encoding="utf-8") as f:
+        with benchmark_file_path.open("r", encoding="utf-8") as f:
             data = json.load(f)
 
             for element in tqdm(data):
@@ -46,7 +46,7 @@ def evaluate_sentence_transformer(model_name: str, max_seq_len: int, dataset_fil
 
     ground_truth: List[List[int]] = []
 
-    with dataset_file_path.open("r", encoding="utf-8") as f:
+    with benchmark_file_path.open("r", encoding="utf-8") as f:
         data: List[Dict] = json.load(f)
 
         for element in data:
