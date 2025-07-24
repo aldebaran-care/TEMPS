@@ -4,6 +4,7 @@ from dateutil.relativedelta import relativedelta
 import argparse
 
 import pandas as pd
+from tqdm import tqdm
 
 from temporal_embeddings.data_utils.utils.dates.compute_distance_dates import compute_distance_dates_same_type
 
@@ -61,7 +62,7 @@ def generate_random_date(start_year=1100, end_year=2100):
 
 def generate_dataset(n_phrases=100):
     data = []
-    for _ in range(n_phrases):
+    for _ in tqdm(range(n_phrases)):
         phrase, answer = phrase_and_answer()
 
         # Add the correct answer
