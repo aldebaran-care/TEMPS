@@ -109,6 +109,19 @@ def main(data_fraction: float, model_name: str, batch_size: int, lr: float, weig
             if current_step % num_eval_steps == 0:
                 execution.model.eval()
 
+                checkpoint_path: Path = Path(output_directory_path) / Path(f"checkpoint_step_{current_step}.pth")
+                torch.save({
+                    "step": current_step,
+                    "epoch": epoch,
+                    "model_state_dict": execution.model.state_dict(),
+                    "optimizer_state_dict": execution.optimizer.state_dict(),
+                    "lr_scheduler_state_dict": execution.lr_scheduler.state_dict(),
+                    "best_dev_score": best_dev_score,
+                    "best_state_dict": best_state_dict,
+                    "val_metrics": val_metrics,
+                }, checkpoint_path)
+                print(f"Checkpoint saved at step {current_step} -> {checkpoint_path}")
+
                 dev_score = execution.evaluator("val")
 
                 if best_dev_score < dev_score:
