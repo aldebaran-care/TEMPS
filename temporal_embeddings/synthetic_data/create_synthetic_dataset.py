@@ -1,6 +1,7 @@
 import json
 from tqdm import tqdm
 from pathlib import Path
+import pandas as pd  # <-- Added import
 
 from temporal_embeddings.data_utils.utils.dates.dates_settings import START_DATE, END_DATE
 from temporal_embeddings.synthetic_data.utils.refs.ref_to_date import ref_to_date
@@ -34,18 +35,15 @@ def create_synthetic_dataset(output_file_path: Path = None, size: int = 10) -> N
             end_year = END_DATE
         current_date_target = generate_random_date_full(start_year, end_year)
         current_target_text = expression_to_text(current_date_target)
-
-        sentence = f"[CLS] {first_random_temporal_text} [SEP] {current_text} [SEP]"
         
         for _ in range(4):
             second_random_temporal_expression = generate_random_temporal_expression()
             second_random_temporal_text = expression_to_text(second_random_temporal_expression)
             
             similarity = compute_similarity_expressions(first_random_temporal_expression, second_random_temporal_expression, current_date, current_date_target)
-            
-            sentence_target = f"[CLS] {second_random_temporal_text} [SEP] {current_target_text} [SEP]"
-            output_data.append((sentence, sentence_target, similarity))
-        
+
+            output_data.append((first_random_temporal_text, current_text, second_random_temporal_text, current_target_text, similarity))
+
         for _ in range(1):
             dates = None
             
@@ -64,10 +62,8 @@ def create_synthetic_dataset(output_file_path: Path = None, size: int = 10) -> N
             if dates:
                 if len(dates) > 1:
                     second_random_temporal_expression = f"{dates[0]},{dates[1]}"
-                
                 else:
                     second_random_temporal_expression = dates[0]
-            
             else:
                 second_random_temporal_expression = generate_close_random_temporal_expression(first_random_temporal_expression, current_date)
             
@@ -75,15 +71,21 @@ def create_synthetic_dataset(output_file_path: Path = None, size: int = 10) -> N
             
             similarity = compute_similarity_expressions(first_random_temporal_expression, second_random_temporal_expression, current_date, current_date_target)
             
-            sentence_target = f"[CLS] {second_random_temporal_text} [SEP] {current_target_text} [SEP]"
-            output_data.append((sentence, sentence_target, similarity))
+            output_data.append((first_random_temporal_text, current_text, second_random_temporal_text, current_target_text, similarity))
 
-    with output_file_path.open("w", encoding="utf-8") as f:
-        json.dump(output_data, f, indent=4)
+    # Convert to DataFrame
+    df = pd.DataFrame(output_data, columns=[
+        "first_expression", "current_text", "second_expression", "target_text", "similarity"
+    ])
 
-    count = 0
-    for element in output_data:
-        if element[2] > 0.5:
-            count += 1
+    # Save to CSV
+    if output_file_path:
+        csv_path = output_file_path.with_suffix(".csv")
+        df.to_csv(csv_path, index=False)
 
-    print(f"Close similarities : {count / len(output_data)}")
+    # Optional: Also save as JSON if needed
+    # with output_file_path.open("w", encoding="utf-8") as f:
+    #     json.dump(output_data, f, indent=4)
+
+    count = (df["similarity"] > 0.5).sum()
+    print(f"Close similarities : {count / len(df)}")
