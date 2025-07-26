@@ -55,7 +55,7 @@ def evaluate_salesforce(benchmark_file_path: Path, eval_id: int, top_k: int, met
 
             unique_texts = list(unique_texts)
             
-            texts_to_encode = [t for t in unique_texts if (t not in embeddings_cache.index) and (len(t) <= 400)]
+            texts_to_encode = [t for t in unique_texts if (t not in embeddings_cache.index)]
             
             if texts_to_encode:
                 print(f"Encoding {len(texts_to_encode)} unique texts...")
