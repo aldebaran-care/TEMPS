@@ -2,6 +2,7 @@ from typing import List, Dict
 from pathlib import Path
 
 import torch
+import pandas as pd
 from torch.utils.data import DataLoader
 from transformers.tokenization_utils import BatchEncoding, PreTrainedTokenizer
 from transformers import AutoTokenizer
@@ -26,26 +27,51 @@ class Inference:
 
         self.tokenizer: PreTrainedTokenizer = AutoTokenizer.from_pretrained(self.model_name, model_max_length = self.max_seq_len, use_fast = False)
 
-        self.cached_embeddings: Dict = {}
+        self.cached_embeddings: pd.DataFrame = pd.DataFrame(columns=['mu', 'std', 'dates'])
 
-    def set_sentences(self, sentences1: List[str], sentences1_dates: List[str], sentences2: List[str], sentences2_dates: List[str], scores: list[float]):
+    def set_sentences(self, sentences1: List[str], sentences1_dates: List[str], sentences2: List[str], sentences2_dates: List[str], scores: List[float]):
         self.sentences1, self.sentences2, self.scores = sentences1, sentences2, scores
         self.sentences1_dates, self.sentences2_dates = sentences1_dates, sentences2_dates
 
-    def tokenize(self, batch: list[str]) -> BatchEncoding:
+    def tokenize(self, batch: List[str]) -> BatchEncoding:
         return self.tokenizer(batch, padding=True, truncation=True, return_tensors="pt", max_length=self.max_seq_len, add_special_tokens=SPECIAL_TOKENS)
     
-    def data_loader(self, sentences: list[str]):
+    def data_loader(self, sentences: List[str]):
         return DataLoader(sentences, collate_fn=self.tokenize, batch_size=self.batch_size, shuffle=False, num_workers=NUM_WORKERS, pin_memory=True, drop_last=False)
 
-    def sim_fn(self, sent1: list[str], sent1_dates: list[str], sent2: list[str], sent2_dates: list[str]) -> float:
-        sent1: GaussOutput = self.encode_fn(sent1, sent1_dates)
-        sent2: GaussOutput = self.encode_fn(sent2, sent2_dates)
+    def sim_fn(self, sent1: List[str], sent1_dates: List[str], sent2: List[str], sent2_dates: List[str]) -> float:
+        sentences_to_embed: List[List[str, str]] = []
 
-        return asymmetrical_kl_sim(sent1.mu, sent1.std, sent2.mu, sent2.std)
+        for i, sentence in enumerate(sent1):
+            if sentence not in self.cached_embeddings.index:
+                sentences_to_embed.append((sentence, sent1_dates[i]))
+
+        for i, sentence in enumerate(sent2):
+            if sentence not in self.cached_embeddings.index:
+                sentences_to_embed.append((sentence, sent2_dates[i]))
+
+        sentences_to_embed_emb: GaussOutput = self.encode_fn([s[0] for s in sentences_to_embed], [s[1] for s in sentences_to_embed])
+
+        for sent in sentences_to_embed:
+            if sent[0] not in self.cached_embeddings.index:
+                self.cached_embeddings.loc[sent[0]] = {
+                    'mu': sentences_to_embed_emb.mu[i].cpu().tolist(),
+                    'std': sentences_to_embed_emb.std[i].cpu().tolist(),
+                    'dates': sent[1]
+                }
+
+        sent1_emb_mu = self.cached_embeddings.loc[sent1, 'mu'].values
+        sent1_emb_std = self.cached_embeddings.loc[sent1, 'std'].values
+        sent2_emb_mu = self.cached_embeddings.loc[sent2, 'mu'].values
+        sent2_emb_std = self.cached_embeddings.loc[sent2, 'std'].values
+
+        sent1_output: GaussOutput = GaussOutput(mu=torch.FloatTensor(sent1_emb_mu), std=torch.FloatTensor(sent1_emb_std))
+        sent2_output: GaussOutput = GaussOutput(mu=torch.FloatTensor(sent2_emb_mu), std=torch.FloatTensor(sent2_emb_std))
+
+        return asymmetrical_kl_sim(sent1_output.mu, sent1_output.std, sent2_output.mu, sent2_output.std)
 
     @torch.inference_mode()
-    def encode_fn(self, sentences: list[str], dates: list[str], **_) -> GaussOutput:
+    def encode_fn(self, sentences: List[str], dates: List[str], **_) -> GaussOutput:
         self.model.eval()
 
         output: GaussOutput = None
@@ -57,7 +83,7 @@ class Inference:
         return output
     
     def evaluate(self) -> dict:
-        similarities: list[float] = []
+        similarities: List[float] = []
         
         similarities = [i.item() for i in list(self.sim_fn(self.sentences1, self.sentences1_dates, self.sentences2, self.sentences2_dates))]
         
