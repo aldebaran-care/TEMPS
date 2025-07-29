@@ -60,10 +60,10 @@ class Inference:
                     'dates': sent[1]
                 }
 
-        sent1_emb_mu = self.cached_embeddings.loc[sent1, 'mu'].values
-        sent1_emb_std = self.cached_embeddings.loc[sent1, 'std'].values
-        sent2_emb_mu = self.cached_embeddings.loc[sent2, 'mu'].values
-        sent2_emb_std = self.cached_embeddings.loc[sent2, 'std'].values
+        sent1_emb_mu = self.cached_embeddings.loc[sent1, 'mu']
+        sent1_emb_std = self.cached_embeddings.loc[sent1, 'std']
+        sent2_emb_mu = self.cached_embeddings.loc[sent2, 'mu']
+        sent2_emb_std = self.cached_embeddings.loc[sent2, 'std']
 
         sent1_output: GaussOutput = GaussOutput(mu=torch.FloatTensor(sent1_emb_mu), std=torch.FloatTensor(sent1_emb_std))
         sent2_output: GaussOutput = GaussOutput(mu=torch.FloatTensor(sent2_emb_mu), std=torch.FloatTensor(sent2_emb_std))
