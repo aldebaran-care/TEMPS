@@ -44,15 +44,15 @@ class Inference:
 
         for i, sentence in enumerate(sent1):
             if sentence not in self.cached_embeddings.index:
-                sentences_to_embed.append((sentence, sent1_dates[i]))
+                sentences_to_embed.append([sentence, sent1_dates[i]])
 
         for i, sentence in enumerate(sent2):
             if sentence not in self.cached_embeddings.index:
-                sentences_to_embed.append((sentence, sent2_dates[i]))
+                sentences_to_embed.append([sentence, sent2_dates[i]])
 
         sentences_to_embed_emb: GaussOutput = self.encode_fn([s[0] for s in sentences_to_embed], [s[1] for s in sentences_to_embed])
 
-        for sent in sentences_to_embed:
+        for i, sent in enumerate(sentences_to_embed):
             if sent[0] not in self.cached_embeddings.index:
                 self.cached_embeddings.loc[sent[0]] = {
                     'mu': sentences_to_embed_emb.mu[i].cpu().tolist(),
@@ -65,10 +65,7 @@ class Inference:
         sent2_emb_mu = self.cached_embeddings.loc[sent2, 'mu']
         sent2_emb_std = self.cached_embeddings.loc[sent2, 'std']
 
-        sent1_output: GaussOutput = GaussOutput(mu=torch.FloatTensor(sent1_emb_mu), std=torch.FloatTensor(sent1_emb_std))
-        sent2_output: GaussOutput = GaussOutput(mu=torch.FloatTensor(sent2_emb_mu), std=torch.FloatTensor(sent2_emb_std))
-
-        return asymmetrical_kl_sim(sent1_output.mu, sent1_output.std, sent2_output.mu, sent2_output.std)
+        return asymmetrical_kl_sim(torch.FloatTensor(sent1_emb_mu), torch.FloatTensor(sent1_emb_std), torch.FloatTensor(sent2_emb_mu), torch.FloatTensor(sent2_emb_std))
 
     @torch.inference_mode()
     def encode_fn(self, sentences: List[str], dates: List[str], **_) -> GaussOutput:
