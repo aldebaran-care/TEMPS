@@ -29,7 +29,18 @@ def evaluate_salesforce(benchmark_file_path: Path, eval_id: int, top_k: int, met
     SIMILARITIES_FILE_PATH: Path = Path(f"output/similarities/{benchmark_file_path.stem}/{model_name}/{eval_id}_similarities.json")
     create_folders(SIMILARITIES_FILE_PATH.parent)
 
+    CACHE_FILE_PATH: Path = Path(f"output/cache/{benchmark_file_path.stem}/{model_name}/{eval_id}_cache.pkl")
+    create_folders(CACHE_FILE_PATH.parent)
+
+    # Load embedding cache if exists
     embeddings_cache = pd.DataFrame(columns=["text", "embedding"]).set_index("text")
+    if CACHE_FILE_PATH.exists():
+        embeddings_cache = pd.read_pickle(CACHE_FILE_PATH)
+
+    if "ts_retriever" in str(benchmark_file_path):
+            ts_retriever_paragraphs: List[str] = []
+            with Path("data/evaluation/ts_retriever/doc.json").open("r", encoding="utf-8") as f:
+                ts_retriever_paragraphs = json.load(f)
 
     if not skip:
         task = 'Given a question with temporal constraints, retrieve relevant passages that answer the question with the correct temporal information.'
@@ -51,7 +62,7 @@ def evaluate_salesforce(benchmark_file_path: Path, eval_id: int, top_k: int, met
             for benchmark_item in tqdm(benchmark_data, desc="Collecting unique texts"):
                 question = get_detailed_instruct(task, benchmark_item["question"])
                 unique_texts.add(question)
-                unique_texts.update(benchmark_item["paragraphs"])
+                unique_texts.update(benchmark_item["paragraphs"] if "ts_retriever" not in str(benchmark_file_path) else ts_retriever_paragraphs)
 
             unique_texts = list(unique_texts)
             
@@ -65,7 +76,7 @@ def evaluate_salesforce(benchmark_file_path: Path, eval_id: int, top_k: int, met
 
             for element in tqdm(benchmark_data, desc="Evaluating"):
                 question: str = get_detailed_instruct(task, element["question"])
-                paragraphs: List[str] = element["paragraphs"]
+                paragraphs: List[str] = element["paragraphs"] if "ts_retriever" not in str(benchmark_file_path) else ts_retriever_paragraphs
 
                 texts = [question] + paragraphs
                 embeddings = []
@@ -80,6 +91,9 @@ def evaluate_salesforce(benchmark_file_path: Path, eval_id: int, top_k: int, met
                     similarities.append(scores.tolist()[0][0])
 
                 output_similarities.append(similarities)
+
+        # Save embedding cache
+        embeddings_cache.to_pickle(CACHE_FILE_PATH)
 
         with SIMILARITIES_FILE_PATH.open("w", encoding="utf-8") as g:
             json.dump(output_similarities, g, indent=4, ensure_ascii=False)
