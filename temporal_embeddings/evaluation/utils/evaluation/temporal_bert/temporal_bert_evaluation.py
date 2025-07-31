@@ -12,6 +12,9 @@ def evaluate_temporal_bert(model_name: str, model_path: Path, batch_size: int, m
     OUTPUT_SIMILARITIES_FILE_PATH: Path = Path(f"output/similarities/{benchmark_file_path.stem}/{model_name}/{model_path.stem}/{eval_id}_similarities.json")
     create_folders(OUTPUT_SIMILARITIES_FILE_PATH.parent)
 
+    CACHE_FILE_PATH: Path = Path(f"output/cache/{benchmark_file_path.stem}/{model_name}/{model_path.stem}/{eval_id}_cache.pkl")
+    create_folders(CACHE_FILE_PATH.parent)
+
     if not skip:
         output_similarities: List[List[float]] = []
 
@@ -20,7 +23,7 @@ def evaluate_temporal_bert(model_name: str, model_path: Path, batch_size: int, m
         with benchmark_file_path.open("r", encoding="utf-8") as f:
             benchmark_data = json.load(f)
 
-            inference: Inference = Inference(model_name=model_name, model_path=model_path, batch_size=batch_size, max_seq_len=max_seq_len)
+            inference: Inference = Inference(model_name=model_name, model_path=model_path, batch_size=batch_size, max_seq_len=max_seq_len, cache_file_path=CACHE_FILE_PATH)
 
             for benchmark_item in tqdm(benchmark_data):
                 question: str = benchmark_item["question"]

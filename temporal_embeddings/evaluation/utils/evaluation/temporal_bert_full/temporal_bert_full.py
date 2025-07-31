@@ -16,8 +16,14 @@ def evaluate_temporal_bert_full(model_name: str, external_model_name: str, model
     TEMPORAL_SIMILARITIES_FILE_PATH: Path = Path(f"output/similarities/{benchmark_file_path.stem}/{model_name.replace('-full', '')}/{model_path.stem}/{eval_id}_similarities.json")
     create_folders(TEMPORAL_SIMILARITIES_FILE_PATH.parent)
 
+    TEMPORAL_CACHE_FILE_PATH: Path = Path(f"output/cache/{benchmark_file_path.stem}/{model_name.replace('-full', '')}/{model_path.stem}/{eval_id}_cache.pkl")
+    create_folders(TEMPORAL_CACHE_FILE_PATH.parent)
+
     EXTERNAL_SIMILARITIES_FILE_PATH: Path = Path(f"output/similarities/{benchmark_file_path.stem}/{external_model_name}/{eval_id}_similarities.json")
     create_folders(EXTERNAL_SIMILARITIES_FILE_PATH.parent)
+
+    EXTERNAL_CACHE_FILE_PATH: Path = Path(f"output/cache/{benchmark_file_path.stem}/{external_model_name}/{eval_id}_cache.pkl")
+    create_folders(EXTERNAL_CACHE_FILE_PATH.parent)
 
     if "ts_retriever" in str(benchmark_file_path):
             ts_retriever_paragraphs: List[str] = []
@@ -32,7 +38,7 @@ def evaluate_temporal_bert_full(model_name: str, external_model_name: str, model
         with benchmark_file_path.open("r", encoding="utf-8") as f:
             benchmark_data = json.load(f)
 
-            inference: Inference = Inference(model_name=model_name, model_path=model_path, batch_size=batch_size, max_seq_len=max_seq_len)
+            inference: Inference = Inference(model_name=model_name, model_path=model_path, batch_size=batch_size, max_seq_len=max_seq_len, cache_file_path=TEMPORAL_CACHE_FILE_PATH)
 
             for benchmark_item in tqdm(benchmark_data):
                 question: str = benchmark_item["question"]
@@ -55,8 +61,10 @@ def evaluate_temporal_bert_full(model_name: str, external_model_name: str, model
         model: SentenceTransformer = SentenceTransformer(model_name)
         model.max_seq_length = MAX_SEQ_LEN
 
-        # Add embedding cache
+        # Load embedding cache if exists
         embedding_cache: pd.DataFrame = pd.DataFrame(columns=['embedding'])
+        if EXTERNAL_CACHE_FILE_PATH.exists():
+            embedding_cache = pd.read_pickle(EXTERNAL_CACHE_FILE_PATH)
 
         output_similarities: List[List[float]] = []
 
@@ -74,9 +82,9 @@ def evaluate_temporal_bert_full(model_name: str, external_model_name: str, model
                 # Check cache for question embedding
                 if question not in embedding_cache.index:
                     question_emb = model.encode(question, convert_to_tensor=True)
-                    embedding_cache.loc[question] = {'embedding': question_emb.cpu()}
+                    embedding_cache.loc[question] = {'embedding': question_emb.cpu().numpy()}
                 else:
-                    question_emb = embedding_cache.loc[question, 'embedding'].to(device=model.device)
+                    question_emb = embedding_cache.loc[question, 'embedding']
 
                 paragraphs: List[str] = benchmark_element["paragraphs"] if "ts_retriever" not in str(benchmark_file_path) else ts_retriever_paragraphs
 
@@ -86,13 +94,16 @@ def evaluate_temporal_bert_full(model_name: str, external_model_name: str, model
                     # Check cache for paragraph embedding
                     if paragraph not in embedding_cache.index:
                         paragraph_emb = model.encode(paragraph, convert_to_tensor=True)
-                        embedding_cache.loc[paragraph] = {'embedding': paragraph_emb.cpu()}
+                        embedding_cache.loc[paragraph] = {'embedding': paragraph_emb.cpu().numpy()}
                     else:
-                        paragraph_emb = embedding_cache.loc[paragraph, 'embedding'].to(device=model.device)
+                        paragraph_emb = embedding_cache.loc[paragraph, 'embedding']
 
                     similarities.append(float(util.cos_sim(question_emb, paragraph_emb)[0].item()))
 
                 output_similarities.append(similarities)
+
+        # Save embedding cache as pandas DataFrame
+        embedding_cache.to_pickle(EXTERNAL_CACHE_FILE_PATH)
 
         with EXTERNAL_SIMILARITIES_FILE_PATH.open("w", encoding="utf-8") as g:
             json.dump(output_similarities, g, indent=4, ensure_ascii=False)

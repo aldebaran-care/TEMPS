@@ -13,11 +13,12 @@ from temporal_embeddings.evaluation.utils.evaluation.temporal_bert.similarity im
 from temporal_embeddings.utils.positional_encoding import positional_encoding
 
 class Inference:
-    def __init__(self, model_name: str, model_path: Path, batch_size: int, max_seq_len: int):
+    def __init__(self, model_name: str, model_path: Path, batch_size: int, max_seq_len: int, cache_file_path: Path = None):
         self.model_name: str = model_name
         self.model_path: Path = model_path
         self.batch_size: int = batch_size
         self.max_seq_len: int = max_seq_len
+        self.cache_file_path: Path = cache_file_path
 
         if model_name in ["all-minilm-l6-v2", "all-minilm-l6-v2-full"]:
             self.model_name = "sentence-transformers/all-MiniLM-L6-v2"
@@ -27,7 +28,10 @@ class Inference:
 
         self.tokenizer: PreTrainedTokenizer = AutoTokenizer.from_pretrained(self.model_name, model_max_length = self.max_seq_len, use_fast = False)
 
+        # Load embedding cache if exists
         self.cached_embeddings: pd.DataFrame = pd.DataFrame(columns=['mu', 'std', 'dates'])
+        if self.cache_file_path and self.cache_file_path.exists():
+            self.cached_embeddings = pd.read_pickle(self.cache_file_path)
 
     def set_sentences(self, sentences1: List[str], sentences1_dates: List[str], sentences2: List[str], sentences2_dates: List[str], scores: List[float]):
         self.sentences1, self.sentences2, self.scores = sentences1, sentences2, scores
@@ -85,5 +89,9 @@ class Inference:
         similarities: List[float] = []
         
         similarities = [i.item() for i in list(self.sim_fn(self.sentences1, self.sentences1_dates, self.sentences2, self.sentences2_dates))]
+        
+        # Save embedding cache if cache file path is provided
+        if self.cache_file_path:
+            self.cached_embeddings.to_pickle(self.cache_file_path)
         
         return {"sent1": self.sentences1, "sent2": self.sentences2, "similarity": similarities, "ground_truth": self.scores}
