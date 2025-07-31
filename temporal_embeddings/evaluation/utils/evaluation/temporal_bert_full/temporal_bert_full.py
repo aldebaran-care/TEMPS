@@ -5,6 +5,7 @@ from typing import List, Dict
 from tqdm import tqdm
 from sentence_transformers import SentenceTransformer, util
 import numpy as np
+import pandas as pd
 
 from temporal_embeddings.evaluation.utils.evaluation.temporal_bert.inference import Inference
 from temporal_embeddings.evaluation.utils.evaluation.temporal_bert.parameters import MAX_SEQ_LEN
@@ -18,12 +19,12 @@ def evaluate_temporal_bert_full(model_name: str, external_model_name: str, model
     EXTERNAL_SIMILARITIES_FILE_PATH: Path = Path(f"output/similarities/{benchmark_file_path.stem}/{external_model_name}/{eval_id}_similarities.json")
     create_folders(EXTERNAL_SIMILARITIES_FILE_PATH.parent)
 
-    def run_temporal_bert(model_name: str, model_path: Path, batch_size: int, max_seq_len: int) -> None:
-        if "ts_retriever" in str(benchmark_file_path):
+    if "ts_retriever" in str(benchmark_file_path):
             ts_retriever_paragraphs: List[str] = []
             with Path("data/evaluation/ts_retriever/doc.json").open("r", encoding="utf-8") as f:
                 ts_retriever_paragraphs = json.load(f)
 
+    def run_temporal_bert(model_name: str, model_path: Path, batch_size: int, max_seq_len: int) -> None:
         output_similarities: List[List[float]] = []
 
         reference_date: str = "09 august 2024"
@@ -54,6 +55,9 @@ def evaluate_temporal_bert_full(model_name: str, external_model_name: str, model
         model: SentenceTransformer = SentenceTransformer(model_name)
         model.max_seq_length = MAX_SEQ_LEN
 
+        # Add embedding cache
+        embedding_cache: pd.DataFrame = pd.DataFrame(columns=['embedding'])
+
         output_similarities: List[List[float]] = []
 
         benchmark_data: List[Dict] = []
@@ -66,14 +70,25 @@ def evaluate_temporal_bert_full(model_name: str, external_model_name: str, model
                 ground_truth.append(benchmark_element["answer"])
 
                 question: str = benchmark_element["question"]
-                question_emb = model.encode(question, convert_to_tensor=True)
+                
+                # Check cache for question embedding
+                if question not in embedding_cache.index:
+                    question_emb = model.encode(question, convert_to_tensor=True)
+                    embedding_cache.loc[question] = {'embedding': question_emb.cpu()}
+                else:
+                    question_emb = embedding_cache.loc[question, 'embedding'].to(device=model.device)
 
-                paragraphs: List[str] = benchmark_element["paragraphs"]
+                paragraphs: List[str] = benchmark_element["paragraphs"] if "ts_retriever" not in str(benchmark_file_path) else ts_retriever_paragraphs
 
                 similarities: List[float] = []
                 
                 for paragraph in paragraphs:
-                    paragraph_emb = model.encode(paragraph, convert_to_tensor=True)
+                    # Check cache for paragraph embedding
+                    if paragraph not in embedding_cache.index:
+                        paragraph_emb = model.encode(paragraph, convert_to_tensor=True)
+                        embedding_cache.loc[paragraph] = {'embedding': paragraph_emb.cpu()}
+                    else:
+                        paragraph_emb = embedding_cache.loc[paragraph, 'embedding'].to(device=model.device)
 
                     similarities.append(float(util.cos_sim(question_emb, paragraph_emb)[0].item()))
 
