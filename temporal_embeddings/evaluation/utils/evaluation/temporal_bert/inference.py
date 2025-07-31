@@ -40,44 +40,46 @@ class Inference:
         return DataLoader(sentences, collate_fn=self.tokenize, batch_size=self.batch_size, shuffle=False, num_workers=NUM_WORKERS, pin_memory=True, drop_last=False)
 
     def sim_fn(self, sent1: List[str], sent1_dates: List[str], sent2: List[str], sent2_dates: List[str]) -> float:
-        sentences_to_embed: List[List[str, str]] = []
+        # Get embeddings for all sentences (caching handled in encode_fn)
+        sent1_emb = self.encode_fn(sent1, sent1_dates)
+        sent2_emb = self.encode_fn(sent2, sent2_dates)
 
-        for i, sentence in enumerate(sent1):
-            if sentence not in self.cached_embeddings.index:
-                sentences_to_embed.append([sentence, sent1_dates[i]])
-
-        for i, sentence in enumerate(sent2):
-            if sentence not in self.cached_embeddings.index:
-                sentences_to_embed.append([sentence, sent2_dates[i]])
-
-        sentences_to_embed_emb: GaussOutput = self.encode_fn([s[0] for s in sentences_to_embed], [s[1] for s in sentences_to_embed])
-
-        for i, sent in enumerate(sentences_to_embed):
-            if sent[0] not in self.cached_embeddings.index:
-                self.cached_embeddings.loc[sent[0]] = {
-                    'mu': sentences_to_embed_emb.mu[i].cpu().tolist(),
-                    'std': sentences_to_embed_emb.std[i].cpu().tolist(),
-                    'dates': sent[1]
-                }
-
-        sent1_emb_mu = self.cached_embeddings.loc[sent1, 'mu']
-        sent1_emb_std = self.cached_embeddings.loc[sent1, 'std']
-        sent2_emb_mu = self.cached_embeddings.loc[sent2, 'mu']
-        sent2_emb_std = self.cached_embeddings.loc[sent2, 'std']
-
-        return asymmetrical_kl_sim(torch.FloatTensor(sent1_emb_mu), torch.FloatTensor(sent1_emb_std), torch.FloatTensor(sent2_emb_mu), torch.FloatTensor(sent2_emb_std))
+        return asymmetrical_kl_sim(sent1_emb.mu, sent1_emb.std, sent2_emb.mu, sent2_emb.std)
 
     @torch.inference_mode()
     def encode_fn(self, sentences: List[str], dates: List[str], **_) -> GaussOutput:
         self.model.eval()
 
-        output: GaussOutput = None
+        sentences_to_embed: List[str] = []
+        sentence_indices: List[int] = []
 
-        for batch in self.data_loader(sentences):
-            output = self.model.forward(**batch.to(INFERENCE_DEVICE), dates=positional_encoding(dates[:self.batch_size]).to(INFERENCE_DEVICE))
-            break
+        for i, sentence in enumerate(sentences):
+            if sentence not in self.cached_embeddings.index:
+                sentences_to_embed.append(sentence)
+                sentence_indices.append(i)
 
-        return output
+        if sentences_to_embed:
+            dates_to_embed = [dates[i] for i in sentence_indices]
+            
+            batch_start = 0
+            for batch in self.data_loader(sentences_to_embed):
+                batch_size = len(batch['input_ids'])
+                batch_dates = dates_to_embed[batch_start:batch_start + batch_size]
+                new_embeddings = self.model.forward(**batch.to(INFERENCE_DEVICE), dates=positional_encoding(batch_dates).to(INFERENCE_DEVICE))
+                
+                for i, sentence in enumerate(sentences_to_embed[batch_start:batch_start + batch_size]):
+                    if sentence not in self.cached_embeddings.index:
+                        self.cached_embeddings.loc[sentence] = {
+                            'mu': new_embeddings.mu[i].cpu().tolist(),
+                            'std': new_embeddings.std[i].cpu().tolist(),
+                            'dates': batch_dates[i]
+                        }
+                batch_start += batch_size
+
+        mu_tensors = [torch.FloatTensor(self.cached_embeddings.loc[sentence, 'mu']) for sentence in sentences]
+        std_tensors = [torch.FloatTensor(self.cached_embeddings.loc[sentence, 'std']) for sentence in sentences]
+        
+        return GaussOutput(mu=torch.stack(mu_tensors), std=torch.stack(std_tensors))
     
     def evaluate(self) -> dict:
         similarities: List[float] = []
