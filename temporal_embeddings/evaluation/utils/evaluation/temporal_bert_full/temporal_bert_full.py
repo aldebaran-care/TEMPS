@@ -19,7 +19,7 @@ def evaluate_temporal_bert_full(model_name: str, external_model_name: str, model
     create_folders(EXTERNAL_SIMILARITIES_FILE_PATH.parent)
 
     def run_temporal_bert(model_name: str, model_path: Path, batch_size: int, max_seq_len: int) -> None:
-        if "ts_retriever" in benchmark_file_path:
+        if "ts_retriever" in str(benchmark_file_path):
             ts_retriever_paragraphs: List[str] = []
             with Path("data/evaluation/ts_retriever/doc.json").open("r", encoding="utf-8") as f:
                 ts_retriever_paragraphs = json.load(f)
@@ -36,7 +36,7 @@ def evaluate_temporal_bert_full(model_name: str, external_model_name: str, model
             for benchmark_item in tqdm(benchmark_data):
                 question: str = benchmark_item["question"]
 
-                paragraphs: List[str] = benchmark_item["paragraphs"] if "ts_retriever" not in benchmark_file_path else ts_retriever_paragraphs
+                paragraphs: List[str] = benchmark_item["paragraphs"] if "ts_retriever" not in str(benchmark_file_path) else ts_retriever_paragraphs
                 questions: List[str] = [question] * len(paragraphs)
                 reference_dates: List[str] = [reference_date] * len(paragraphs)
                 ground_truth: List[float] = [0.0] * len(paragraphs)
