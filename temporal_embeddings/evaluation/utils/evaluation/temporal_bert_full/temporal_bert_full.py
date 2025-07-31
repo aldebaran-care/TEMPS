@@ -12,7 +12,7 @@ from temporal_embeddings.utils.os.folder_management import create_folders
 from temporal_embeddings.evaluation.utils.evaluation.metrics import compute_metrics, compute_metrics_ranks
 
 def evaluate_temporal_bert_full(model_name: str, external_model_name: str, model_path: Path, batch_size: int, max_seq_len: int, benchmark_file_path: Path, eval_id: int, top_k: int, metric: str, skip: bool = False, use_ranking: bool = False) -> None:
-    TEMPORAL_SIMILARITIES_FILE_PATH: Path = Path(f"output/similarities/{benchmark_file_path.stem}/{model_name.replace("-full", "")}/{model_path.stem}/{eval_id}_similarities.json")
+    TEMPORAL_SIMILARITIES_FILE_PATH: Path = Path(f"output/similarities/{benchmark_file_path.stem}/{model_name.replace('-full', '')}/{model_path.stem}/{eval_id}_similarities.json")
     create_folders(TEMPORAL_SIMILARITIES_FILE_PATH.parent)
 
     EXTERNAL_SIMILARITIES_FILE_PATH: Path = Path(f"output/similarities/{benchmark_file_path.stem}/{external_model_name}/{eval_id}_similarities.json")
