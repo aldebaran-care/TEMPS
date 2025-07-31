@@ -44,7 +44,7 @@ def evaluate_sentence_transformer(model_name: str, max_seq_len: int, benchmark_f
                 # Check cache for question embedding
                 if question not in embedding_cache.index:
                     question_emb = model.encode(question, convert_to_tensor=True) if model_name != "BAAI/bge-large-en" else model.encode(question, convert_to_tensor=True, normalize_embeddings=True)
-                    embedding_cache.loc[question] = {'embedding': question_emb.cpu().numpy()}
+                    embedding_cache.loc[question] = {'embedding': question_emb.cpu()}
                 else:
                     question_emb = embedding_cache.loc[question, 'embedding']
 
@@ -56,7 +56,7 @@ def evaluate_sentence_transformer(model_name: str, max_seq_len: int, benchmark_f
                     # Check cache for paragraph embedding
                     if paragraph not in embedding_cache.index:
                         paragraph_emb = model.encode(paragraph, convert_to_tensor=True) if model_name != "BAAI/bge-large-en" else model.encode(paragraph, convert_to_tensor=True, normalize_embeddings=True)
-                        embedding_cache.loc[paragraph] = {'embedding': paragraph_emb.cpu().numpy()}
+                        embedding_cache.loc[paragraph] = {'embedding': paragraph_emb.cpu()}
                     else:
                         paragraph_emb = embedding_cache.loc[paragraph, 'embedding']
 
