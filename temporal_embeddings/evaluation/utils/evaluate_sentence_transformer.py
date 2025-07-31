@@ -5,21 +5,17 @@ from pathlib import Path
 from tqdm import tqdm
 from sentence_transformers import SentenceTransformer, util
 import pandas as pd
-import torch
-from transformers import AutoModel
 
 from temporal_embeddings.utils.os.folder_management import create_folders
 from temporal_embeddings.evaluation.utils.evaluation.metrics import compute_metrics
 
 def evaluate_sentence_transformer(model_name: str, max_seq_len: int, benchmark_file_path: Path, eval_id: int, top_k: int, metric: str, skip: bool) -> None:
-    if "jina-embeddings" in model_name:
-        model = AutoModel.from_pretrained(model_name, trust_remote_code=True, torch_dtype=torch.float16)
-        if torch.cuda.is_available():
-            model.to("cuda")
+    if "Qwen3-Embedding" in model_name:
+        model: SentenceTransformer = SentenceTransformer(model_name)
     else:
         model: SentenceTransformer = SentenceTransformer(model_name)
-        model.max_seq_length = max_seq_len
     
+    model.max_seq_length = max_seq_len
     similarities_file_path: Path = Path(f"output/similarities/{benchmark_file_path.stem}/{model_name}/{eval_id}_similarities.json")
     
     cache_file_path: Path = Path(f"output/cache/{benchmark_file_path.stem}/{model_name}/{eval_id}_cache.pkl")
@@ -51,13 +47,8 @@ def evaluate_sentence_transformer(model_name: str, max_seq_len: int, benchmark_f
                 
                 # Check cache for question embedding
                 if question not in embedding_cache.index:
-                    if "jina-embeddings" in model_name:
-                        question_emb = model.encode_text(
-                            texts=[question], 
-                            task="retrieval", 
-                            prompt_name="query"
-                        )
-                        question_emb = torch.tensor(question_emb[0])
+                    if "Qwen3-Embedding" in model_name:
+                        question_emb = model.encode(question, convert_to_tensor=True, prompt_name="query")
                     elif model_name != "BAAI/bge-large-en":
                         question_emb = model.encode(question, convert_to_tensor=True)
                     else:
@@ -74,13 +65,8 @@ def evaluate_sentence_transformer(model_name: str, max_seq_len: int, benchmark_f
                 for paragraph in paragraphs:
                     # Check cache for paragraph embedding
                     if paragraph not in embedding_cache.index:
-                        if "jina-embeddings" in model_name:
-                            paragraph_emb = model.encode_text(
-                                texts=[paragraph], 
-                                task="retrieval", 
-                                prompt_name="passage"
-                            )
-                            paragraph_emb = torch.tensor(paragraph_emb[0])
+                        if "Qwen3-Embedding" in model_name:
+                            paragraph_emb = model.encode(paragraph, convert_to_tensor=True)
                         elif model_name != "BAAI/bge-large-en":
                             paragraph_emb = model.encode(paragraph, convert_to_tensor=True)
                         else:
@@ -90,14 +76,7 @@ def evaluate_sentence_transformer(model_name: str, max_seq_len: int, benchmark_f
                     else:
                         paragraph_emb = embedding_cache.loc[paragraph, 'embedding']
 
-                    if "jina-embeddings" in model_name:
-                        # For Jina embeddings, compute cosine similarity manually
-                        question_emb_norm = torch.nn.functional.normalize(question_emb.cpu(), p=2, dim=0)
-                        paragraph_emb_norm = torch.nn.functional.normalize(paragraph_emb.cpu(), p=2, dim=0)
-                        similarity = torch.dot(question_emb_norm, paragraph_emb_norm).item()
-                        similarities.append(float(similarity))
-                    else:
-                        similarities.append(float(util.cos_sim(question_emb.cpu(), paragraph_emb.cpu())[0].item()))
+                    similarities.append(float(util.cos_sim(question_emb.cpu(), paragraph_emb.cpu())[0].item()))
 
                 output_similarities.append(similarities)
 
