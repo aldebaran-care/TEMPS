@@ -10,7 +10,7 @@ from temporal_embeddings.utils.os.folder_management import create_folders
 from temporal_embeddings.evaluation.utils.evaluation.metrics import compute_metrics
 
 def evaluate_sentence_transformer(model_name: str, max_seq_len: int, benchmark_file_path: Path, eval_id: int, top_k: int, metric: str, skip: bool) -> None:
-    if "jina-embeddings-v4" in model_name:
+    if "jina-embeddings" in model_name:
         model: SentenceTransformer = SentenceTransformer(model_name, trust_remote_code=True)
     else:
         model: SentenceTransformer = SentenceTransformer(model_name)
@@ -47,13 +47,17 @@ def evaluate_sentence_transformer(model_name: str, max_seq_len: int, benchmark_f
                 
                 # Check cache for question embedding
                 if question not in embedding_cache.index:
-                    if "jina-embeddings-v4" in model_name:
+                    if "jina-embeddings" in model_name:
                         question_emb = model.encode(question, convert_to_tensor=True, task="retrieval", prompt_name="query")
+                    
                     elif model_name != "BAAI/bge-large-en":
                         question_emb = model.encode(question, convert_to_tensor=True)
+                    
                     else:
                         question_emb = model.encode(question, convert_to_tensor=True, normalize_embeddings=True)
+                    
                     embedding_cache.loc[question] = {'embedding': question_emb.cpu()}
+                
                 else:
                     question_emb = embedding_cache.loc[question, 'embedding']
 
@@ -64,7 +68,7 @@ def evaluate_sentence_transformer(model_name: str, max_seq_len: int, benchmark_f
                 for paragraph in paragraphs:
                     # Check cache for paragraph embedding
                     if paragraph not in embedding_cache.index:
-                        if "jina-embeddings-v4" in model_name:
+                        if "jina-embeddings" in model_name:
                             paragraph_emb = model.encode(paragraph, convert_to_tensor=True, task="retrieval", prompt_name="passage")
                         
                         elif model_name != "BAAI/bge-large-en":
