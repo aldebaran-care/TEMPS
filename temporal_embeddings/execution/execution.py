@@ -130,7 +130,7 @@ class Execution():
                 dates=batch.sent1_date
             )
             
-            scores = torch.cat([scores.to(self.accelerator.device), batch.score], dim=0)
+            scores = torch.cat([scores.to(self.accelerator.device), batch.score.to(self.accelerator.device)], dim=0)
 
             sent0_output.append(sent0_out)
             sent1_output.append(sent1_out)
@@ -140,7 +140,7 @@ class Execution():
 
         similarities = asymmetrical_kl_sim(output0.mu, output0.std, output1.mu, output1.std)
 
-        spearman = float(spearmanr(scores.to("cpu").abs(), similarities.to("cpu"))[0]) * 100
+        spearman = float(spearmanr(scores.cpu().abs(), similarities.cpu())[0]) * 100
 
         return spearman
     

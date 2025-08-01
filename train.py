@@ -114,8 +114,7 @@ def main(data_fraction: float,
                 sim_mat: torch.FloatTensor = asymmetrical_kl_sim(sent0_out.mu, sent0_out.std, sent1_out.mu, sent1_out.std)
                 
                 loss_func = CoSentLoss()
-                score_tensor = batch.score.clone().detach().to(execution.accelerator.device)
-                loss = loss_func(sim_mat, score_tensor)
+                loss = loss_func(sim_mat, batch.score)
 
                 train_losses.append(loss.item())
 
