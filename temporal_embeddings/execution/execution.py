@@ -4,6 +4,7 @@ from torch.utils.data import DataLoader
 from transformers import AutoTokenizer
 from transformers.tokenization_utils import BatchEncoding, PreTrainedTokenizer
 from transformers.optimization import get_linear_schedule_with_warmup
+from accelerate import Accelerator
 from scipy.stats import spearmanr
 from accelerate import Accelerator
 
@@ -31,11 +32,13 @@ class Execution():
             "output_directory_path": output_directory_path,
         }
 
-        self.model: GaussModel = GaussModel(self.parameters["model_name"], False).eval().to(DEVICE)
+        self.accelerator = Accelerator()
+
+        self.model: GaussModel = GaussModel(self.parameters["model_name"], False).eval().to(self.accelerator.device)
         
         if continue_training:
             self.model.load_state_dict(torch.load(model_path))
-            self.model.to(DEVICE)
+            self.model.to(self.accelerator.device)
             self.model.eval()
         
         self.tokenizer: PreTrainedTokenizer = AutoTokenizer.from_pretrained(self.parameters["model_name"], model_max_length=MAX_SEQ_LEN, use_fast=True)
@@ -43,8 +46,6 @@ class Execution():
         self.gauss_data: GaussData = GaussData(self.parameters["input_file_path"], self.tokenizer, self.parameters["batch_size"], data_fraction)
 
         self.optimizer, self.lr_scheduler = self.create_optimizer(model=self.model, train_steps_per_epoch=len(self.gauss_data.train_dataloader))
-
-        self.accelerator = Accelerator()
 
         self.model, self.optimizer, self.gauss_data.train_dataloader, self.lr_scheduler = self.accelerator.prepare(
             self.model, self.optimizer, self.gauss_data.train_dataloader, self.lr_scheduler

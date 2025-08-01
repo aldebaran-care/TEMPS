@@ -20,9 +20,20 @@ from temporal_embeddings.utils.save import save_json
 from temporal_embeddings.utils.loss.cosent_loss import CoSentLoss
 from temporal_embeddings.utils.os.folder_management import create_folders
 
-def main(data_fraction: float, model_name: str, batch_size: int, lr: float, weight_decay: float, epochs: int, 
-         num_warmup_ratio: float, temperature: float, num_eval_steps: int, 
-         input_file_path: str, output_directory_path: str, continue_training: bool, model_path: str) -> None:
+def main(data_fraction: float,
+         model_name: str,
+         batch_size: int,
+         lr: float,
+         weight_decay: float,
+         epochs: int,
+         num_warmup_ratio: float,
+         temperature: float,
+         num_eval_steps: int,
+         input_file_path: str,
+         output_directory_path: str,
+         continue_training: bool,
+         model_path: str) -> None:
+    
     set_seed(seed=SEED)
     current_time = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
     log_dir_path: str = f"logs/runs/{model_name}_{current_time}"
@@ -84,15 +95,14 @@ def main(data_fraction: float, model_name: str, batch_size: int, lr: float, weig
 
         for batch in tqdm(execution.gauss_data.train_dataloader, total=len(execution.gauss_data.train_dataloader), dynamic_ncols=True, leave=False, desc="Step"):
             current_step += 1
-            batch: BatchEncoding = batch.to(DEVICE)
 
-            sent0_input_ids = batch.sent0.input_ids.to(DEVICE)
-            sent0_attention_mask = batch.sent0.attention_mask.to(DEVICE)
-            sent0_out: GaussOutput = execution.model.forward(input_ids=sent0_input_ids, attention_mask=sent0_attention_mask, dates=batch.sent0_date.to(DEVICE))
+            sent0_input_ids = batch.sent0.input_ids
+            sent0_attention_mask = batch.sent0.attention_mask
+            sent0_out: GaussOutput = execution.model.forward(input_ids=sent0_input_ids, attention_mask=sent0_attention_mask, dates=batch.sent0_date)
 
-            sent1_input_ids = batch.sent1.input_ids.to(DEVICE)
-            sent1_attention_mask = batch.sent1.attention_mask.to(DEVICE)
-            sent1_out: GaussOutput = execution.model.forward(input_ids=sent1_input_ids, attention_mask=sent1_attention_mask, dates=batch.sent1_date.to(DEVICE))
+            sent1_input_ids = batch.sent1.input_ids
+            sent1_attention_mask = batch.sent1.attention_mask
+            sent1_out: GaussOutput = execution.model.forward(input_ids=sent1_input_ids, attention_mask=sent1_attention_mask, dates=batch.sent1_date)
 
             sim_mat: torch.FloatTensor = asymmetrical_kl_sim(sent0_out.mu, sent0_out.std, sent1_out.mu, sent1_out.std)
             
@@ -110,6 +120,7 @@ def main(data_fraction: float, model_name: str, batch_size: int, lr: float, weig
                 execution.model.eval()
 
                 checkpoint_path: Path = Path(output_directory_path) / Path(f"checkpoint_step_{current_step}.pth")
+                
                 torch.save({
                     "step": current_step,
                     "epoch": epoch,
@@ -137,6 +148,7 @@ def main(data_fraction: float, model_name: str, batch_size: int, lr: float, weig
                 }
 
                 print(f"Writing to TensorBoard at step {current_step}:")
+                
                 for key, value in val_metrics.items():
                     print(f"  Metrics/{key}: {value}")
                     writer.add_scalar(f"Metrics/{key}", value, current_step)
