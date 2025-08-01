@@ -6,7 +6,7 @@ from transformers.tokenization_utils import BatchEncoding, PreTrainedTokenizer
 from transformers.optimization import get_linear_schedule_with_warmup
 from accelerate import Accelerator
 from scipy.stats import spearmanr
-from accelerate import Accelerator
+from accelerate.utils import DistributedDataParallelKwargs
 
 from temporal_embeddings.model.gauss_model import GaussModel, GaussOutput
 from temporal_embeddings.parameters.parameters import (
@@ -32,7 +32,8 @@ class Execution():
             "output_directory_path": output_directory_path,
         }
 
-        self.accelerator = Accelerator()
+        kwargs = DistributedDataParallelKwargs(broadcast_buffers=False)
+        self.accelerator = Accelerator(kwargs)
 
         self.model: GaussModel = GaussModel(self.parameters["model_name"], False)
         self.model = self.model.eval()
