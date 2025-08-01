@@ -96,23 +96,25 @@ def main(data_fraction: float,
         for batch in tqdm(execution.gauss_data.train_dataloader, total=len(execution.gauss_data.train_dataloader), dynamic_ncols=True, leave=False, desc="Step"):
             current_step += 1
 
-            sent0_input_ids = batch.sent0.input_ids.to(execution.accelerator.device)
-            sent0_attention_mask = batch.sent0.attention_mask.to(execution.accelerator.device)
-            sent0_out: GaussOutput = execution.model.forward(input_ids=sent0_input_ids, attention_mask=sent0_attention_mask, dates=batch.sent0_date.to(execution.accelerator.device))
+            # Move tensors to device without in-place operations
+            sent0_input_ids = batch.sent0.input_ids.clone().detach().to(execution.accelerator.device)
+            sent0_attention_mask = batch.sent0.attention_mask.clone().detach().to(execution.accelerator.device)
+            sent0_date = batch.sent0_date.clone().detach().to(execution.accelerator.device)
+            sent0_out: GaussOutput = execution.model.forward(input_ids=sent0_input_ids, attention_mask=sent0_attention_mask, dates=sent0_date)
 
-            sent1_input_ids = batch.sent1.input_ids.to(execution.accelerator.device)
-            sent1_attention_mask = batch.sent1.attention_mask.to(execution.accelerator.device)
-            sent1_out: GaussOutput = execution.model.forward(input_ids=sent1_input_ids, attention_mask=sent1_attention_mask, dates=batch.sent1_date.to(execution.accelerator.device))
+            sent1_input_ids = batch.sent1.input_ids.clone().detach().to(execution.accelerator.device)
+            sent1_attention_mask = batch.sent1.attention_mask.clone().detach().to(execution.accelerator.device)
+            sent1_date = batch.sent1_date.clone().detach().to(execution.accelerator.device)
+            sent1_out: GaussOutput = execution.model.forward(input_ids=sent1_input_ids, attention_mask=sent1_attention_mask, dates=sent1_date)
 
             sim_mat: torch.FloatTensor = asymmetrical_kl_sim(sent0_out.mu, sent0_out.std, sent1_out.mu, sent1_out.std)
             
             loss_func = CoSentLoss()
-            loss = loss_func(sim_mat, batch.score.to(execution.accelerator.device))
+            loss = loss_func(sim_mat, batch.score.clone().detach().to(execution.accelerator.device))
 
             train_losses.append(loss.item())
 
             execution.optimizer.zero_grad()
-            torch.autograd.set_detect_anomaly(True)
             execution.accelerator.backward(loss)
             execution.optimizer.step()
             execution.lr_scheduler.step()

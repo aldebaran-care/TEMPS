@@ -52,7 +52,7 @@ class Execution():
         )
 
     def tokenize(self, batch: list[str]) -> BatchEncoding:
-        return self.tokenizer(batch, padding=True, truncation=True, return_tensors="pt", max_length=MAX_SEQ_LEN, add_special_tokens=SPECIAL_TOKENS).to(self.accelerator.device)
+        return self.tokenizer(batch, padding=True, truncation=True, return_tensors="pt", max_length=MAX_SEQ_LEN, add_special_tokens=SPECIAL_TOKENS)
     
     def collate_fn(self, data_list: list[dict]) -> BatchEncoding:
         """
@@ -146,7 +146,8 @@ class Execution():
 
         output: list[GaussOutput] = []
         for batch in data_loader:
-            out = self.model.forward(**batch.to(self.accelerator.device))
+            batch_device = {k: v.to(self.accelerator.device) for k, v in batch.items()}
+            out = self.model.forward(**batch_device)
             output.append(out)
 
         output = GaussOutput(
