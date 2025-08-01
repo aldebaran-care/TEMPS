@@ -34,12 +34,14 @@ class Execution():
 
         self.accelerator = Accelerator()
 
-        self.model: GaussModel = GaussModel(self.parameters["model_name"], False).eval().to(self.accelerator.device)
+        self.model: GaussModel = GaussModel(self.parameters["model_name"], False)
+        self.model = self.model.eval()
+        self.model = self.model.to(self.accelerator.device)
         
         if continue_training:
             self.model.load_state_dict(torch.load(model_path))
-            self.model.to(self.accelerator.device)
-            self.model.eval()
+            self.model = self.model.to(self.accelerator.device)
+            self.model = self.model.eval()
         
         self.tokenizer: PreTrainedTokenizer = AutoTokenizer.from_pretrained(self.parameters["model_name"], model_max_length=MAX_SEQ_LEN, use_fast=True)
 
@@ -144,7 +146,7 @@ class Execution():
     
     @torch.inference_mode()
     def encode_fn(self, sentences: list[str], **_) -> GaussOutput:
-        self.model.eval()
+        self.model = self.model.eval()
 
         data_loader = DataLoader(sentences, collate_fn=self.tokenize, batch_size=self.parameters["batch_size"], shuffle=False, num_workers=NUM_WORKERS, pin_memory=True, drop_last=False)
 
