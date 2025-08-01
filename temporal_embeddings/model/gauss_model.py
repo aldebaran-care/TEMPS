@@ -33,12 +33,12 @@ class GaussModel(nn.Module):
 
         emb = self.mean_pooling(outputs, attention_mask)
         # emb = outputs.last_hidden_state[:, 0]
-        emb = torch.cat((emb, dates), dim=-1)
+        emb_dates = torch.cat((emb, dates), dim=-1)
 
-        mu = self.w_mu(emb)
+        mu = self.w_mu(emb_dates)
         mu = self.activation(mu)
 
-        log_var = self.w_var(emb)
+        log_var = self.w_var(emb_dates)
         std = torch.exp(0.5 * log_var)
 
         return GaussOutput(mu=mu, std=std)

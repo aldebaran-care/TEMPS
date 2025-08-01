@@ -98,16 +98,18 @@ def main(data_fraction: float,
 
             with torch.autograd.set_detect_anomaly(True):
             
-                # Move tensors to device without in-place operations
-                sent0_input_ids = batch.sent0.input_ids.clone().detach().to(execution.accelerator.device)
-                sent0_attention_mask = batch.sent0.attention_mask.clone().detach().to(execution.accelerator.device)
-                sent0_date = batch.sent0_date.clone().detach().to(execution.accelerator.device)
-                sent0_out: GaussOutput = execution.model.forward(input_ids=sent0_input_ids, attention_mask=sent0_attention_mask, dates=sent0_date)
+                # Move tensors to device without unnecessary clone/detach operations
+                sent0_out: GaussOutput = execution.model.forward(
+                    input_ids=batch.sent0.input_ids, 
+                    attention_mask=batch.sent0.attention_mask, 
+                    dates=batch.sent0_date
+                )
 
-                sent1_input_ids = batch.sent1.input_ids.clone().detach().to(execution.accelerator.device)
-                sent1_attention_mask = batch.sent1.attention_mask.clone().detach().to(execution.accelerator.device)
-                sent1_date = batch.sent1_date.clone().detach().to(execution.accelerator.device)
-                sent1_out: GaussOutput = execution.model.forward(input_ids=sent1_input_ids, attention_mask=sent1_attention_mask, dates=sent1_date)
+                sent1_out: GaussOutput = execution.model.forward(
+                    input_ids=batch.sent1.input_ids, 
+                    attention_mask=batch.sent1.attention_mask, 
+                    dates=batch.sent1_date
+                )
 
                 sim_mat: torch.FloatTensor = asymmetrical_kl_sim(sent0_out.mu, sent0_out.std, sent1_out.mu, sent1_out.std)
                 
