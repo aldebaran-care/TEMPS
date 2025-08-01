@@ -3,6 +3,7 @@ from datetime import datetime
 import torch
 
 from temporal_embeddings.parameters.parameters import POSITIONAL_ENCODING_DIM
+from temporal_embeddings.data_utils.utils.dates.dates_settings import START_DATE
 
 def positional_encoding(dates, dim=POSITIONAL_ENCODING_DIM, n=10000) -> torch.Tensor:
     """
@@ -16,8 +17,8 @@ def positional_encoding(dates, dim=POSITIONAL_ENCODING_DIM, n=10000) -> torch.Te
     """
     P = torch.zeros(len(dates), dim)
 
-    start_date: datetime = datetime(1889, 1, 1)
-    
+    start_date: datetime = datetime(START_DATE, 1, 1)
+
     for j in range(len(dates)):
         date: datetime = datetime.strptime(dates[j], "%d %B %Y")
         k = (date - start_date).days

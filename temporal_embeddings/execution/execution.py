@@ -32,6 +32,7 @@ class Execution():
         }
 
         self.model: GaussModel = GaussModel(self.parameters["model_name"], False).eval().to(DEVICE)
+        
         if continue_training:
             self.model.load_state_dict(torch.load(model_path))
             self.model.to(DEVICE)
