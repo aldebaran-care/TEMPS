@@ -116,16 +116,15 @@ class Execution():
             data_loader: DataLoader = self.gauss_data.test_dataloader
 
         for batch in tqdm(data_loader, desc=f"Evaluating {split} split"):
-            with torch.cuda.amp.autocast(dtype=DTYPE):
-                sent0_input_ids = batch.sent0.input_ids.to(self.accelerator.device)
-                sent0_attention_mask = batch.sent0.attention_mask.to(self.accelerator.device)
-                sent0_out = self.model.forward(input_ids=sent0_input_ids, attention_mask=sent0_attention_mask, dates=batch.sent0_date.to(self.accelerator.device))
-                
-                sent1_input_ids = batch.sent1.input_ids.to(self.accelerator.device)
-                sent1_attention_mask = batch.sent1.attention_mask.to(self.accelerator.device)
-                sent1_out = self.model.forward(input_ids=sent1_input_ids, attention_mask=sent1_attention_mask, dates=batch.sent1_date.to(self.accelerator.device))
-                
-                scores = torch.cat([scores.to(self.accelerator.device), (batch.to(self.accelerator.device).score)], dim=0)
+            sent0_input_ids = batch.sent0.input_ids.to(self.accelerator.device)
+            sent0_attention_mask = batch.sent0.attention_mask.to(self.accelerator.device)
+            sent0_out = self.model.forward(input_ids=sent0_input_ids, attention_mask=sent0_attention_mask, dates=batch.sent0_date.to(self.accelerator.device))
+            
+            sent1_input_ids = batch.sent1.input_ids.to(self.accelerator.device)
+            sent1_attention_mask = batch.sent1.attention_mask.to(self.accelerator.device)
+            sent1_out = self.model.forward(input_ids=sent1_input_ids, attention_mask=sent1_attention_mask, dates=batch.sent1_date.to(self.accelerator.device))
+            
+            scores = torch.cat([scores.to(self.accelerator.device), (batch.to(self.accelerator.device).score)], dim=0)
 
             sent0_output.append(sent0_out)
             sent1_output.append(sent1_out)
@@ -147,8 +146,7 @@ class Execution():
 
         output: list[GaussOutput] = []
         for batch in data_loader:
-            with torch.cuda.amp.autocast(dtype=DTYPE):
-                out = self.model.forward(**batch.to(self.accelerator.device))
+            out = self.model.forward(**batch.to(self.accelerator.device))
             output.append(out)
 
         output = GaussOutput(

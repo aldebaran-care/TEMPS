@@ -112,6 +112,7 @@ def main(data_fraction: float,
             train_losses.append(loss.item())
 
             execution.optimizer.zero_grad()
+            torch.autograd.set_detect_anomaly(True)
             execution.accelerator.backward(loss)
             execution.optimizer.step()
             execution.lr_scheduler.step()
