@@ -39,11 +39,11 @@ class GaussModel(nn.Module):
         mu = self.activation(mu)
 
         log_var = self.w_var(emb)
-        std = torch.sqrt(log_var.exp())
+        std = torch.exp(0.5 * log_var)
 
         return GaussOutput(mu=mu, std=std)
     
     def mean_pooling(self, model_output, attention_mask):
         token_embeddings = model_output[0] #First element of model_output contains all token embeddings
-        input_mask_expanded = attention_mask.unsqueeze(-1).expand(token_embeddings.size()).float()
+        input_mask_expanded = attention_mask.unsqueeze(-1).repeat(1, 1, token_embeddings.size(-1))
         return torch.sum(token_embeddings * input_mask_expanded, 1) / torch.clamp(input_mask_expanded.sum(1), min=1e-9)
