@@ -96,18 +96,18 @@ def main(data_fraction: float,
         for batch in tqdm(execution.gauss_data.train_dataloader, total=len(execution.gauss_data.train_dataloader), dynamic_ncols=True, leave=False, desc="Step"):
             current_step += 1
 
-            sent0_input_ids = batch.sent0.input_ids
-            sent0_attention_mask = batch.sent0.attention_mask
-            sent0_out: GaussOutput = execution.model.forward(input_ids=sent0_input_ids, attention_mask=sent0_attention_mask, dates=batch.sent0_date)
+            sent0_input_ids = batch.sent0.input_ids.to(execution.accelerator.device)
+            sent0_attention_mask = batch.sent0.attention_mask.to(execution.accelerator.device)
+            sent0_out: GaussOutput = execution.model.forward(input_ids=sent0_input_ids, attention_mask=sent0_attention_mask, dates=batch.sent0_date.to(execution.accelerator.device))
 
-            sent1_input_ids = batch.sent1.input_ids
-            sent1_attention_mask = batch.sent1.attention_mask
-            sent1_out: GaussOutput = execution.model.forward(input_ids=sent1_input_ids, attention_mask=sent1_attention_mask, dates=batch.sent1_date)
+            sent1_input_ids = batch.sent1.input_ids.to(execution.accelerator.device)
+            sent1_attention_mask = batch.sent1.attention_mask.to(execution.accelerator.device)
+            sent1_out: GaussOutput = execution.model.forward(input_ids=sent1_input_ids, attention_mask=sent1_attention_mask, dates=batch.sent1_date.to(execution.accelerator.device))
 
             sim_mat: torch.FloatTensor = asymmetrical_kl_sim(sent0_out.mu, sent0_out.std, sent1_out.mu, sent1_out.std)
             
-            criterion = CoSentLoss()
-            loss = criterion(sim_mat, batch.score)
+            loss_func = CoSentLoss()
+            loss = loss_func(sim_mat, batch.score.to(execution.accelerator.device))
 
             train_losses.append(loss.item())
 

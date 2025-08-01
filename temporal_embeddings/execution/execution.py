@@ -10,7 +10,7 @@ from accelerate import Accelerator
 
 from temporal_embeddings.model.gauss_model import GaussModel, GaussOutput
 from temporal_embeddings.parameters.parameters import (
-    NUM_WORKERS, MAX_SEQ_LEN, DTYPE, DEVICE, SPECIAL_TOKENS
+    NUM_WORKERS, MAX_SEQ_LEN, DTYPE, SPECIAL_TOKENS
 )
 from temporal_embeddings.utils.gauss_data import GaussData
 from temporal_embeddings.utils.log_info import log_info
@@ -47,12 +47,12 @@ class Execution():
 
         self.optimizer, self.lr_scheduler = self.create_optimizer(model=self.model, train_steps_per_epoch=len(self.gauss_data.train_dataloader))
 
-        self.model, self.optimizer, self.gauss_data.train_dataloader, self.lr_scheduler = self.accelerator.prepare(
-            self.model, self.optimizer, self.gauss_data.train_dataloader, self.lr_scheduler
+        self.model, self.optimizer, self.gauss_data.train_dataloader, self.gauss_data.eval_dataloader, self.lr_scheduler = self.accelerator.prepare(
+            self.model, self.optimizer, self.gauss_data.train_dataloader, self.gauss_data.eval_dataloader, self.lr_scheduler
         )
 
     def tokenize(self, batch: list[str]) -> BatchEncoding:
-        return self.tokenizer(batch, padding=True, truncation=True, return_tensors="pt", max_length=MAX_SEQ_LEN, add_special_tokens=SPECIAL_TOKENS).to(DEVICE)
+        return self.tokenizer(batch, padding=True, truncation=True, return_tensors="pt", max_length=MAX_SEQ_LEN, add_special_tokens=SPECIAL_TOKENS).to(self.accelerator.device)
     
     def collate_fn(self, data_list: list[dict]) -> BatchEncoding:
         """
@@ -117,15 +117,15 @@ class Execution():
 
         for batch in tqdm(data_loader, desc=f"Evaluating {split} split"):
             with torch.cuda.amp.autocast(dtype=DTYPE):
-                sent0_input_ids = batch.sent0.input_ids.to(DEVICE)
-                sent0_attention_mask = batch.sent0.attention_mask.to(DEVICE)
-                sent0_out = self.model.forward(input_ids=sent0_input_ids, attention_mask=sent0_attention_mask, dates=batch.sent0_date.to(DEVICE))
+                sent0_input_ids = batch.sent0.input_ids.to(self.accelerator.device)
+                sent0_attention_mask = batch.sent0.attention_mask.to(self.accelerator.device)
+                sent0_out = self.model.forward(input_ids=sent0_input_ids, attention_mask=sent0_attention_mask, dates=batch.sent0_date.to(self.accelerator.device))
                 
-                sent1_input_ids = batch.sent1.input_ids.to(DEVICE)
-                sent1_attention_mask = batch.sent1.attention_mask.to(DEVICE)
-                sent1_out = self.model.forward(input_ids=sent1_input_ids, attention_mask=sent1_attention_mask, dates=batch.sent1_date.to(DEVICE))
+                sent1_input_ids = batch.sent1.input_ids.to(self.accelerator.device)
+                sent1_attention_mask = batch.sent1.attention_mask.to(self.accelerator.device)
+                sent1_out = self.model.forward(input_ids=sent1_input_ids, attention_mask=sent1_attention_mask, dates=batch.sent1_date.to(self.accelerator.device))
                 
-                scores = torch.cat([scores.to(DEVICE), (batch.to(DEVICE).score)], dim=0)
+                scores = torch.cat([scores.to(self.accelerator.device), (batch.to(self.accelerator.device).score)], dim=0)
 
             sent0_output.append(sent0_out)
             sent1_output.append(sent1_out)
@@ -148,7 +148,7 @@ class Execution():
         output: list[GaussOutput] = []
         for batch in data_loader:
             with torch.cuda.amp.autocast(dtype=DTYPE):
-                out = self.model.forward(**batch.to(DEVICE))
+                out = self.model.forward(**batch.to(self.accelerator.device))
             output.append(out)
 
         output = GaussOutput(
