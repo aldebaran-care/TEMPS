@@ -47,8 +47,8 @@ class Execution():
 
         self.optimizer, self.lr_scheduler = self.create_optimizer(model=self.model, train_steps_per_epoch=len(self.gauss_data.train_dataloader))
 
-        self.model, self.optimizer, self.gauss_data.train_dataloader, self.gauss_data.val_dataloader, self.lr_scheduler = self.accelerator.prepare(
-            self.model, self.optimizer, self.gauss_data.train_dataloader, self.gauss_data.val_dataloader, self.lr_scheduler
+        self.model, self.optimizer, self.gauss_data.train_dataloader, self.gauss_data.val_dataloader, self.gauss_data.test_dataloader, self.lr_scheduler = self.accelerator.prepare(
+            self.model, self.optimizer, self.gauss_data.train_dataloader, self.gauss_data.val_dataloader, self.gauss_data.test_dataloader, self.lr_scheduler
         )
 
     def tokenize(self, batch: list[str]) -> BatchEncoding:
