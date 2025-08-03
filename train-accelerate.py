@@ -43,8 +43,8 @@ def train_model():
     num_classes = 10
     
     # Create synthetic dataset
-    train_dataset = create_synthetic_data(num_samples=100000)
-    val_dataset = create_synthetic_data(num_samples=5000)
+    train_dataset = create_synthetic_data(num_samples=100000*1000)
+    val_dataset = create_synthetic_data(num_samples=5000*1000)
     
     # Create data loaders
     train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
