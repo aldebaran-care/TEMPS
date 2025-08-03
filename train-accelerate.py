@@ -2,7 +2,7 @@ import torch
 import torch.nn as nn
 import torch.optim as optim
 from torch.utils.data import DataLoader, TensorDataset
-from accelerate import Accelerator
+from pytorch_accelerated import Trainer
 import time
 import numpy as np
 
@@ -32,100 +32,42 @@ def create_synthetic_data(num_samples=10000, input_size=784, num_classes=10):
     return TensorDataset(X, y)
 
 def train_model():
-    # Initialize accelerator
-    accelerator = Accelerator()
-    
     # Hyperparameters
-    batch_size = 32
     learning_rate = 0.001
     num_epochs = 1
     input_size = 784
     num_classes = 10
     
-    # Create synthetic dataset
+    # Create synthetic datasets
     train_dataset = create_synthetic_data(num_samples=100000*10)
     val_dataset = create_synthetic_data(num_samples=5000*10)
-    
-    # Create data loaders
-    train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
-    val_loader = DataLoader(val_dataset, batch_size=batch_size, shuffle=False)
+    test_dataset = create_synthetic_data(num_samples=5000*10)
     
     # Initialize model, optimizer, and loss function
     model = SimpleNN(input_size=input_size, num_classes=num_classes)
     optimizer = optim.Adam(model.parameters(), lr=learning_rate)
-    criterion = nn.CrossEntropyLoss()
+    loss_func = nn.CrossEntropyLoss()
     
-    # Prepare everything with accelerator
-    model, optimizer, train_loader, val_loader = accelerator.prepare(
-        model, optimizer, train_loader, val_loader
+    # Create trainer
+    trainer = Trainer(
+        model,
+        loss_func=loss_func,
+        optimizer=optimizer,
     )
     
-    # Training loop
-    accelerator.print(f"Starting training on {accelerator.device}")
-    accelerator.print(f"Number of processes: {accelerator.num_processes}")
+    # Train the model
+    trainer.train(
+        train_dataset=train_dataset,
+        eval_dataset=val_dataset,
+        num_epochs=num_epochs,
+        per_device_batch_size=32,
+    )
     
-    for epoch in range(num_epochs):
-        # Training phase
-        model.train()
-        total_loss = 0
-        correct = 0
-        total = 0
-        
-        start_time = time.time()
-        
-        for batch_idx, (data, target) in enumerate(train_loader):
-            optimizer.zero_grad()
-            
-            output = model(data)
-            loss = criterion(output, target)
-            
-            # Backward pass with accelerator
-            accelerator.backward(loss)
-            optimizer.step()
-            
-            total_loss += loss.item()
-            _, predicted = output.max(1)
-            total += target.size(0)
-            correct += predicted.eq(target).sum().item()
-            
-            if batch_idx % 20 == 0:
-                accelerator.print(f'Epoch: {epoch+1}/{num_epochs}, '
-                                f'Batch: {batch_idx}/{len(train_loader)}, '
-                                f'Loss: {loss.item():.4f}')
-        
-        train_acc = 100. * correct / total
-        avg_loss = total_loss / len(train_loader)
-        epoch_time = time.time() - start_time
-        
-        # Validation phase
-        model.eval()
-        val_loss = 0
-        val_correct = 0
-        val_total = 0
-        
-        with torch.no_grad():
-            for data, target in val_loader:
-                output = model(data)
-                val_loss += criterion(output, target).item()
-                _, predicted = output.max(1)
-                val_total += target.size(0)
-                val_correct += predicted.eq(target).sum().item()
-        
-        val_acc = 100. * val_correct / val_total
-        val_loss /= len(val_loader)
-        
-        accelerator.print(f'Epoch {epoch+1}/{num_epochs}:')
-        accelerator.print(f'  Train Loss: {avg_loss:.4f}, Train Acc: {train_acc:.2f}%')
-        accelerator.print(f'  Val Loss: {val_loss:.4f}, Val Acc: {val_acc:.2f}%')
-        accelerator.print(f'  Time: {epoch_time:.2f}s')
-        accelerator.print('-' * 50)
-    
-    # Save model (only on main process)
-    accelerator.wait_for_everyone()
-    if accelerator.is_main_process:
-        unwrapped_model = accelerator.unwrap_model(model)
-        torch.save(unwrapped_model.state_dict(), 'simple_nn_model.pth')
-        accelerator.print("Model saved successfully!")
+    # Evaluate on test dataset
+    trainer.evaluate(
+        dataset=test_dataset,
+        per_device_batch_size=32,
+    )
 
 if __name__ == "__main__":
     train_model()
