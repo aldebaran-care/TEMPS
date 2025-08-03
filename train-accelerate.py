@@ -38,13 +38,13 @@ def train_model():
     # Hyperparameters
     batch_size = 128
     learning_rate = 0.001
-    num_epochs = 5
+    num_epochs = 1
     input_size = 784
     num_classes = 10
     
     # Create synthetic dataset
-    train_dataset = create_synthetic_data(num_samples=8000)
-    val_dataset = create_synthetic_data(num_samples=2000)
+    train_dataset = create_synthetic_data(num_samples=100000)
+    val_dataset = create_synthetic_data(num_samples=5000)
     
     # Create data loaders
     train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
