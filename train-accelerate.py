@@ -7,7 +7,7 @@ import torch.multiprocessing as mp
 from torch.nn.parallel import DistributedDataParallel as DDP
 from torch.utils.data import DataLoader, TensorDataset, DistributedSampler
 from torch.optim import Adam
-import numpy as np
+import time
 
 class SimpleNN(nn.Module):
     def __init__(self, input_size=784, hidden_size=128, num_classes=10):
@@ -163,4 +163,7 @@ def main():
         train_ddp(args)
 
 if __name__ == '__main__':
+    start_time = time.time()
     main()
+    end_time = time.time()
+    print(f"Total training time: {end_time - start_time:.2f} seconds")
