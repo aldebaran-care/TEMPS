@@ -76,41 +76,67 @@ def cleanup_ddp():
     dist.destroy_process_group()
 
 def train_ddp_worker(rank, world_size, args):
-    """Worker function for DDP training"""
+    """Improved worker function for DDP training"""
     setup_ddp(rank, world_size)
     
     # Create model and move to GPU
     model = SimpleNN().cuda(rank)
-    model = DDP(model, device_ids=[rank])
+    # Use find_unused_parameters=False for better performance if all parameters are used
+    model = DDP(model, device_ids=[rank], find_unused_parameters=False)
     
-    # Create dataset with distributed sampler
-    dataset = create_dummy_dataset(args.dataset_size)
-    sampler = DistributedSampler(dataset, num_replicas=world_size, rank=rank)
-    dataloader = DataLoader(dataset, batch_size=args.batch_size, sampler=sampler)
+    # Create larger dataset for DDP to be effective
+    effective_dataset_size = max(args.dataset_size, 10000)  # Minimum 10k samples
+    dataset = create_dummy_dataset(effective_dataset_size)
+    sampler = DistributedSampler(dataset, num_replicas=world_size, rank=rank, shuffle=True)
+    
+    # Adjust batch size per GPU to maintain consistent total batch size
+    per_gpu_batch_size = args.batch_size // world_size
+    if per_gpu_batch_size == 0:
+        per_gpu_batch_size = 1
+    
+    dataloader = DataLoader(
+        dataset, 
+        batch_size=per_gpu_batch_size, 
+        sampler=sampler,
+        num_workers=2,  # Add data loading workers
+        pin_memory=True  # Faster data transfer to GPU
+    )
     
     # Optimizer and loss function
     optimizer = Adam(model.parameters(), lr=args.learning_rate)
     criterion = nn.CrossEntropyLoss()
     
-    # Training loop
+    # Training loop with gradient accumulation for small batches
     model.train()
+    accumulation_steps = max(1, 4 // world_size)  # Accumulate gradients
+    
     for epoch in range(args.epochs):
         sampler.set_epoch(epoch)
         total_loss = 0
+        optimizer.zero_grad()
         
         for batch_idx, (data, target) in enumerate(dataloader):
-            data, target = data.cuda(rank), target.cuda(rank)
+            data, target = data.cuda(rank, non_blocking=True), target.cuda(rank, non_blocking=True)
             
-            optimizer.zero_grad()
             output = model(data)
             loss = criterion(output, target)
+            loss = loss / accumulation_steps  # Scale loss for accumulation
             loss.backward()
+            
+            total_loss += loss.item() * accumulation_steps
+            
+            # Update weights after accumulating gradients
+            if (batch_idx + 1) % accumulation_steps == 0:
+                optimizer.step()
+                optimizer.zero_grad()
+            
+            if batch_idx % (10 * accumulation_steps) == 0 and rank == 0:
+                print(f'GPU {rank}, Epoch {epoch}, Batch {batch_idx}, Loss: {loss.item() * accumulation_steps:.4f}')
+        
+        # Handle remaining gradients
+        if (len(dataloader) % accumulation_steps) != 0:
             optimizer.step()
-            
-            total_loss += loss.item()
-            
-            if batch_idx % 10 == 0 and rank == 0:
-                print(f'Epoch {epoch}, Batch {batch_idx}, Loss: {loss.item():.4f}')
+            optimizer.zero_grad()
         
         if rank == 0:
             avg_loss = total_loss / len(dataloader)
@@ -119,7 +145,7 @@ def train_ddp_worker(rank, world_size, args):
     cleanup_ddp()
 
 def train_ddp(args):
-    """Setup and launch DDP training"""
+    """Improved setup and launch DDP training"""
     world_size = torch.cuda.device_count()
     print(f"Training with DDP on {world_size} GPUs")
     
@@ -128,6 +154,12 @@ def train_ddp(args):
         train_single_gpu(args)
         return
     
+    # Warn about small datasets
+    if args.dataset_size < 5000:
+        print(f"Warning: Dataset size ({args.dataset_size}) is small for DDP. Consider using --dataset-size 50000 or higher")
+    
+    # Set multiprocessing start method
+    mp.set_start_method('spawn', force=True)
     mp.spawn(train_ddp_worker, args=(world_size, args), nprocs=world_size, join=True)
 
 def main():
