@@ -36,13 +36,6 @@ def evaluate_temporal_bert_full(model_name: str, external_model_name: str, model
     create_folders(EXTERNAL_CACHE_FILE_PATH.parent)
     print(f"External cache path: {EXTERNAL_CACHE_FILE_PATH}")
 
-    if "ts_retriever" in str(benchmark_file_path):
-            print("Detected ts_retriever benchmark - loading document paragraphs...")
-            ts_retriever_paragraphs: List[str] = []
-            with Path("data/evaluation/ts_retriever/doc.json").open("r", encoding="utf-8") as f:
-                ts_retriever_paragraphs = json.load(f)
-            print(f"Loaded {len(ts_retriever_paragraphs)} paragraphs from ts_retriever document")
-
     def run_temporal_bert(model_name: str, model_path: Path, batch_size: int, max_seq_len: int) -> None:
         print("Starting TemporalBERT evaluation...")
         output_similarities: List[List[float]] = []
@@ -68,7 +61,7 @@ def evaluate_temporal_bert_full(model_name: str, external_model_name: str, model
             for benchmark_item in tqdm(benchmark_data):
                 question: str = benchmark_item["question"]
 
-                paragraphs: List[str] = benchmark_item["paragraphs"] if "ts_retriever" not in str(benchmark_file_path) else ts_retriever_paragraphs
+                paragraphs: List[str] = benchmark_item["paragraphs"]
                 questions: List[str] = [question] * len(paragraphs)
                 reference_dates: List[str] = [reference_date] * len(paragraphs)
                 ground_truth: List[float] = [0.0] * len(paragraphs)
@@ -122,7 +115,7 @@ def evaluate_temporal_bert_full(model_name: str, external_model_name: str, model
                 else:
                     question_emb = embedding_cache.loc[question, 'embedding']
 
-                paragraphs: List[str] = benchmark_element["paragraphs"] if "ts_retriever" not in str(benchmark_file_path) else ts_retriever_paragraphs
+                paragraphs: List[str] = benchmark_element["paragraphs"]
 
                 similarities: List[float] = []
                 

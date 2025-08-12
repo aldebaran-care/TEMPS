@@ -23,13 +23,6 @@ def evaluate_temporal_bert(model_name: str, model_path: Path, batch_size: int, m
     create_folders(CACHE_FILE_PATH.parent)
     print(f"Created cache directory: {CACHE_FILE_PATH.parent}")
 
-    if "ts_retriever" in str(benchmark_file_path):
-            print("Detected ts_retriever benchmark - loading document paragraphs...")
-            ts_retriever_paragraphs: List[str] = []
-            with Path("data/evaluation/ts_retriever/doc.json").open("r", encoding="utf-8") as f:
-                ts_retriever_paragraphs = json.load(f)
-            print(f"Loaded {len(ts_retriever_paragraphs)} paragraphs from ts_retriever document")
-
     if not skip:
         print("Starting similarity computation phase...")
         if OUTPUT_SIMILARITIES_FILE_PATH.exists():
@@ -58,7 +51,7 @@ def evaluate_temporal_bert(model_name: str, model_path: Path, batch_size: int, m
             for i, benchmark_item in enumerate(tqdm(benchmark_data)):
                 question: str = benchmark_item["question"]
 
-                paragraphs: List[str] = benchmark_item["paragraphs"] if "ts_retriever" not in str(benchmark_file_path) else ts_retriever_paragraphs
+                paragraphs: List[str] = benchmark_item["paragraphs"]
                 questions: List[str] = [question] * len(paragraphs)
                 reference_dates: List[str] = [reference_date] * len(paragraphs)
                 ground_truth: List[float] = [0.0] * len(paragraphs)

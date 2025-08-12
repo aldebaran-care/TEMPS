@@ -47,13 +47,6 @@ def evaluate_salesforce(benchmark_file_path: Path, eval_id: int, top_k: int, met
     else:
         print(f"No cache file found - will create new cache")
 
-    if "ts_retriever" in str(benchmark_file_path):
-            print("Detected ts_retriever benchmark - loading document paragraphs...")
-            ts_retriever_paragraphs: List[str] = []
-            with Path("data/evaluation/ts_retriever/doc.json").open("r", encoding="utf-8") as f:
-                ts_retriever_paragraphs = json.load(f)
-            print(f"Loaded {len(ts_retriever_paragraphs)} paragraphs from ts_retriever document")
-
     if not skip:
         print("Starting similarity computation phase...")
         task = 'Given a question with temporal constraints, retrieve relevant passages that answer the question with the correct temporal information.'
@@ -81,7 +74,7 @@ def evaluate_salesforce(benchmark_file_path: Path, eval_id: int, top_k: int, met
             for benchmark_item in tqdm(benchmark_data, desc="Collecting unique texts"):
                 question = get_detailed_instruct(task, benchmark_item["question"])
                 unique_texts.add(question)
-                unique_texts.update(benchmark_item["paragraphs"] if "ts_retriever" not in str(benchmark_file_path) else ts_retriever_paragraphs)
+                unique_texts.update(benchmark_item["paragraphs"])
 
             unique_texts = list(unique_texts)
             print(f"Found {len(unique_texts)} unique texts")
@@ -101,7 +94,7 @@ def evaluate_salesforce(benchmark_file_path: Path, eval_id: int, top_k: int, met
             print("Processing benchmark items for similarity computation...")
             for element in tqdm(benchmark_data, desc="Evaluating"):
                 question: str = get_detailed_instruct(task, element["question"])
-                paragraphs: List[str] = element["paragraphs"] if "ts_retriever" not in str(benchmark_file_path) else ts_retriever_paragraphs
+                paragraphs: List[str] = element["paragraphs"]
 
                 texts = [question] + paragraphs
                 embeddings = []

@@ -32,13 +32,6 @@ def evaluate_sentence_transformer(model_name: str, max_seq_len: int, benchmark_f
     create_folders(cache_file_path.parent)
     print(f"Created cache directory: {cache_file_path.parent}")
 
-    if "ts_retriever" in str(benchmark_file_path):
-            print("Detected ts_retriever benchmark - loading document paragraphs...")
-            ts_retriever_paragraphs: List[str] = []
-            with Path("data/evaluation/ts_retriever/doc.json").open("r", encoding="utf-8") as f:
-                ts_retriever_paragraphs = json.load(f)
-            print(f"Loaded {len(ts_retriever_paragraphs)} paragraphs from ts_retriever document")
-
     if not skip:
         print("Starting similarity computation phase...")
         
@@ -80,7 +73,7 @@ def evaluate_sentence_transformer(model_name: str, max_seq_len: int, benchmark_f
                 else:
                     question_emb = embedding_cache.loc[question, 'embedding']
 
-                paragraphs: List[str] = element["paragraphs"] if "ts_retriever" not in str(benchmark_file_path) else ts_retriever_paragraphs
+                paragraphs: List[str] = element["paragraphs"]
 
                 similarities: List[float] = []
                 
