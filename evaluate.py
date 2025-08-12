@@ -16,9 +16,10 @@ def main():
     parser.add_argument("--skip", action="store_true", help="Skip model evaluation")
     parser.add_argument("--external_model_name", type=str, default="", help="Name of external model to integrate with temporal embeddings")
     parser.add_argument("--use_ranking", action="store_true", help="Use ranking for evaluation")
+    parser.add_argument("--a", type=float, default=0.5, help="Parameter a for merged similarity computation")
     args = parser.parse_args()
 
-    evaluate_model(args.model_name, args.external_model_name, Path(args.model_path), args.batch_size, args.max_seq_len, args.benchmark, args.eval_id, args.top_k, args.metric, args.skip, args.use_ranking)
+    evaluate_model(args.model_name, args.external_model_name, Path(args.model_path), args.batch_size, args.max_seq_len, args.benchmark, args.eval_id, args.top_k, args.metric, args.skip, args.use_ranking, args.a)
 
 if __name__ == "__main__":
     main()

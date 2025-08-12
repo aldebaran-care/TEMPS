@@ -12,7 +12,7 @@ from temporal_embeddings.evaluation.utils.evaluation.temporal_bert.parameters im
 from temporal_embeddings.utils.os.folder_management import create_folders
 from temporal_embeddings.evaluation.utils.evaluation.metrics import compute_metrics, compute_metrics_ranks
 
-def evaluate_temporal_bert_full(model_name: str, external_model_name: str, model_path: Path, batch_size: int, max_seq_len: int, benchmark_file_path: Path, eval_id: int, top_k: int, metric: str, skip: bool = False, use_ranking: bool = False) -> None:
+def evaluate_temporal_bert_full(model_name: str, external_model_name: str, model_path: Path, batch_size: int, max_seq_len: int, benchmark_file_path: Path, eval_id: int, top_k: int, metric: str, skip: bool = False, use_ranking: bool = False, a: float = 0.5) -> None:
     print(f"Starting TemporalBERT Full evaluation")
     print(f"Temporal model: {model_name} at {model_path}")
     print(f"External model: {external_model_name}")
@@ -220,7 +220,7 @@ def evaluate_temporal_bert_full(model_name: str, external_model_name: str, model
         external_similarities = normalize_list(external_similarities)
 
         print("Merging similarities with weights (temporal: 1x, external: 2x)...")
-        merged_list = [[(x + (2*y)) for x, y in zip(sublist1, sublist2)] for sublist1, sublist2 in zip(temporal_similarities, external_similarities)]
+        merged_list = [[((a*x) + ((1-a)*y)) for x, y in zip(sublist1, sublist2)] for sublist1, sublist2 in zip(temporal_similarities, external_similarities)]
 
         merged_similarities: List[List[float]] = merged_list
         print("Score fusion completed")
