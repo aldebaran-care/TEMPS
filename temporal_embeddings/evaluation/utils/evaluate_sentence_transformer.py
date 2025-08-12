@@ -5,6 +5,7 @@ from pathlib import Path
 from tqdm import tqdm
 from sentence_transformers import SentenceTransformer, util
 import pandas as pd
+import torch
 
 from temporal_embeddings.utils.os.folder_management import create_folders
 from temporal_embeddings.evaluation.utils.evaluation.metrics import compute_metrics
@@ -91,7 +92,7 @@ def evaluate_sentence_transformer(model_name: str, max_seq_len: int, benchmark_f
                     else:
                         paragraph_emb = embedding_cache.loc[paragraph, 'embedding']
 
-                    similarities.append(float(util.cos_sim(question_emb.cpu(), paragraph_emb.cpu())[0].item()))
+                    similarities.append(float(util.cos_sim(torch.Tensor(question_emb).cpu()), torch.Tensor(paragraph_emb).cpu())[0].item())
 
                 output_similarities.append(similarities)
 
