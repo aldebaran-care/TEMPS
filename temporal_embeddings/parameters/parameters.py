@@ -4,7 +4,7 @@ import torch
 # Model Configuration
 MODEL_NAME: str = "sentence-transformers/all-MiniLM-L6-v2"
 MAX_SEQ_LEN: int = 512
-POSITIONAL_ENCODING_DIM: int = 64
+POSITIONAL_ENCODING_DIM: int = 32
 SPECIAL_TOKENS: bool = True
 
 # Training Hyperparameters
