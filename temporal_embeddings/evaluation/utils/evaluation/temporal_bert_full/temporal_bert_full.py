@@ -6,6 +6,7 @@ from tqdm import tqdm
 from sentence_transformers import SentenceTransformer, util
 import numpy as np
 import pandas as pd
+import torch
 
 from temporal_embeddings.evaluation.utils.evaluation.temporal_bert.inference import Inference
 from temporal_embeddings.evaluation.utils.evaluation.temporal_bert.parameters import MAX_SEQ_LEN
@@ -116,8 +117,8 @@ def evaluate_temporal_bert_full(model_name: str, external_model_name: str, model
                 
                 # Check cache for question embedding
                 if question not in embedding_cache.index:
-                    question_emb = model.encode(question, convert_to_tensor=True)
-                    embedding_cache.loc[question] = {'embedding': question_emb.cpu().numpy()}
+                    question_emb = model.encode(question, convert_to_tensor=True).cpu().numpy()
+                    embedding_cache.loc[question] = {'embedding': question_emb}
                 else:
                     question_emb = embedding_cache.loc[question, 'embedding']
 
@@ -128,12 +129,12 @@ def evaluate_temporal_bert_full(model_name: str, external_model_name: str, model
                 for paragraph in paragraphs:
                     # Check cache for paragraph embedding
                     if paragraph not in embedding_cache.index:
-                        paragraph_emb = model.encode(paragraph, convert_to_tensor=True)
-                        embedding_cache.loc[paragraph] = {'embedding': paragraph_emb.cpu().numpy()}
+                        paragraph_emb = model.encode(paragraph, convert_to_tensor=True).cpu().numpy()
+                        embedding_cache.loc[paragraph] = {'embedding': paragraph_emb}
                     else:
                         paragraph_emb = embedding_cache.loc[paragraph, 'embedding']
 
-                    similarities.append(float(util.cos_sim(question_emb, paragraph_emb)[0].item()))
+                    similarities.append(float(util.cos_sim(torch.Tensor(question_emb).cpu(), torch.Tensor(paragraph_emb).cpu())[0].item()))
 
                 output_similarities.append(similarities)
 
