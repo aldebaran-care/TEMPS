@@ -92,26 +92,21 @@ def evaluate_sutime(benchmark_file_path: Path, eval_id: int, top_k: int, metric:
                 question: str = element["question"]
                 paragraphs: List[str] = element["paragraphs"]
                 
-                # Get current date from element if available, otherwise use None
                 question_current_date = '2025-11-13'
                 
-                # Extract temporal expressions from question
                 question_expressions = temporal_cache.loc[question, "expressions"]
 
                 similarities: List[float] = []
                 
                 for paragraph in paragraphs:
-                    # Extract temporal expressions from paragraph
                     paragraph_expressions = temporal_cache.loc[paragraph, "expressions"]
-                    paragraph_current_date = question_current_date  # Use same current date
+                    paragraph_current_date = question_current_date
                     
-                    # Compute similarity between question and paragraph temporal expressions
                     max_similarity = 0.0
                     
                     if question_expressions and paragraph_expressions:
                         for q_expr_text, q_expr_value in question_expressions:
                             for p_expr_text, p_expr_value in paragraph_expressions:
-                                # Use the normalized value (TIMEX3 value) for comparison
                                 similarity = compute_similarity_expressions(
                                     q_expr_value if q_expr_value else q_expr_text,
                                     p_expr_value if p_expr_value else p_expr_text,
@@ -124,7 +119,6 @@ def evaluate_sutime(benchmark_file_path: Path, eval_id: int, top_k: int, metric:
 
                 output_similarities.append(similarities)
 
-        # Save temporal expression cache
         print(f"Saving temporal expression cache to: {CACHE_FILE_PATH}")
         temporal_cache.to_pickle(CACHE_FILE_PATH)
         print(f"Cache saved with {len(temporal_cache)} texts")

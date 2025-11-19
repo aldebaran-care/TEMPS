@@ -2,6 +2,7 @@ import json
 from pathlib import Path
 import argparse
 import random
+from typing import List
 
 def create_evaluation_dataset(dataset_name):
     if dataset_name.lower().startswith("menat_qa"):
@@ -137,9 +138,13 @@ def create_evaluation_dataset(dataset_name):
             data = json.load(infile)
 
         processed_data = []
+
+        all_paragraphs = set()
         
         for item in data:
             paragraphs = [p[:400] for p in item.get("paras", [])]
+
+            all_paragraphs.update(paragraphs)
             
             for q_pair in item.get("questions", []):
                 question_text = q_pair[0][:400]
@@ -150,7 +155,7 @@ def create_evaluation_dataset(dataset_name):
                     
                     entry = {
                         "question": question_text,
-                        "paragraphs": paragraphs,
+                        "paragraphs": paragraphs + fetch_random_paragraphs(list(all_paragraphs - set(paragraphs)), 10),
                         "answer": [para_idx]
                     }
                     
@@ -204,6 +209,12 @@ def create_evaluation_dataset(dataset_name):
         
     else:
         print(f"Dataset '{dataset_name}' is not supported.")
+
+def fetch_random_paragraphs(pargraphs: List[str], num_paragraphs: int) -> List[str]:
+    if len(pargraphs) <= num_paragraphs:
+        return pargraphs
+    
+    return random.sample(pargraphs, num_paragraphs)
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Process evaluation dataset.")
