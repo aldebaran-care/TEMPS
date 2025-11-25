@@ -8,7 +8,7 @@ from temporal_embeddings.evaluation.utils.evaluation.temporal_bert.inference imp
 from temporal_embeddings.utils.os.folder_management import create_folders
 from temporal_embeddings.evaluation.utils.evaluation.metrics import compute_metrics
 
-def evaluate_temporal_bert(model_name: str, model_path: Path, batch_size: int, max_seq_len: int, benchmark_file_path: Path, eval_id: int, top_k: int, metric: str, skip: bool = False) -> None:
+def evaluate_temporal_bert(model_name: str, model_path: Path, batch_size: int, max_seq_len: int, benchmark_file_path: Path, eval_id: int, top_k: int, metric: str, skip: bool = False, use_all_paragraphs: bool = False) -> None:
     print(f"Starting TemporalBERT evaluation for model: {model_name}")
     print(f"Model path: {model_path}")
     print(f"Benchmark file: {benchmark_file_path}")
@@ -38,6 +38,12 @@ def evaluate_temporal_bert(model_name: str, model_path: Path, batch_size: int, m
             benchmark_data = json.load(f)
             print(f"Loaded {len(benchmark_data)} benchmark items")
 
+            if all_paragraphs:
+                all_paragraphs: List[str] = []
+                for item in benchmark_data:
+                    all_paragraphs.extend(item["paragraphs"])
+                all_paragraphs = sorted(list(set(all_paragraphs)))
+
             print("Initializing inference model...")
             if CACHE_FILE_PATH.exists():
                 print(f"Cache file found at: {CACHE_FILE_PATH}")
@@ -51,7 +57,7 @@ def evaluate_temporal_bert(model_name: str, model_path: Path, batch_size: int, m
             for i, benchmark_item in enumerate(tqdm(benchmark_data)):
                 question: str = benchmark_item["question"]
 
-                paragraphs: List[str] = benchmark_item["paragraphs"]
+                paragraphs: List[str] = benchmark_item["paragraphs"] if not use_all_paragraphs else all_paragraphs
                 questions: List[str] = [question] * len(paragraphs)
                 reference_dates: List[str] = [reference_date] * len(paragraphs)
                 ground_truth: List[float] = [0.0] * len(paragraphs)

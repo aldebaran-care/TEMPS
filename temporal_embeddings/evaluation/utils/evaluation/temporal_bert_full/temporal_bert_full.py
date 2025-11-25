@@ -13,12 +13,13 @@ from temporal_embeddings.evaluation.utils.evaluation.temporal_bert.parameters im
 from temporal_embeddings.utils.os.folder_management import create_folders
 from temporal_embeddings.evaluation.utils.evaluation.metrics import compute_metrics, compute_metrics_ranks
 
-def evaluate_temporal_bert_full(model_name: str, external_model_name: str, model_path: Path, batch_size: int, max_seq_len: int, benchmark_file_path: Path, eval_id: int, top_k: int, metric: str, skip: bool = False, use_ranking: bool = False, a: float = 0.5) -> None:
+def evaluate_temporal_bert_full(model_name: str, external_model_name: str, model_path: Path, batch_size: int, max_seq_len: int, benchmark_file_path: Path, eval_id: int, top_k: int, metric: str, skip: bool = False, use_ranking: bool = False, a: float = 0.5, use_all_paragraphs: bool = False) -> None:
     print(f"Starting TemporalBERT Full evaluation")
     print(f"Temporal model: {model_name} at {model_path}")
     print(f"External model: {external_model_name}")
     print(f"Benchmark file: {benchmark_file_path}")
     print(f"Use ranking fusion: {use_ranking}")
+    print(f"Use all paragraphs: {use_all_paragraphs}")
     
     TEMPORAL_SIMILARITIES_FILE_PATH: Path = Path(f"output/similarities/{benchmark_file_path.stem}/{model_name.replace('-full', '')}/{model_path.stem}/{eval_id}_similarities.json")
     create_folders(TEMPORAL_SIMILARITIES_FILE_PATH.parent)
@@ -48,6 +49,13 @@ def evaluate_temporal_bert_full(model_name: str, external_model_name: str, model
             benchmark_data = json.load(f)
             print(f"Loaded {len(benchmark_data)} benchmark items")
 
+            if use_all_paragraphs:
+                all_paragraphs: List[str] = []
+                for item in benchmark_data:
+                    all_paragraphs.extend(item["paragraphs"])
+                all_paragraphs = sorted(list(set(all_paragraphs)))
+                print(f"Using all paragraphs mode: {len(all_paragraphs)} unique paragraphs")
+
             print("Initializing TemporalBERT inference...")
             if TEMPORAL_CACHE_FILE_PATH.exists():
                 print(f"Temporal cache file found at: {TEMPORAL_CACHE_FILE_PATH}")
@@ -61,7 +69,7 @@ def evaluate_temporal_bert_full(model_name: str, external_model_name: str, model
             for benchmark_item in tqdm(benchmark_data):
                 question: str = benchmark_item["question"]
 
-                paragraphs: List[str] = benchmark_item["paragraphs"]
+                paragraphs: List[str] = benchmark_item["paragraphs"] if not use_all_paragraphs else all_paragraphs
                 questions: List[str] = [question] * len(paragraphs)
                 reference_dates: List[str] = [reference_date] * len(paragraphs)
                 ground_truth: List[float] = [0.0] * len(paragraphs)
@@ -102,6 +110,13 @@ def evaluate_temporal_bert_full(model_name: str, external_model_name: str, model
             benchmark_data = json.load(f)
             print(f"Loaded {len(benchmark_data)} benchmark items for external model")
 
+            if use_all_paragraphs:
+                all_paragraphs: List[str] = []
+                for item in benchmark_data:
+                    all_paragraphs.extend(item["paragraphs"])
+                all_paragraphs = sorted(list(set(all_paragraphs)))
+                print(f"Using all paragraphs mode: {len(all_paragraphs)} unique paragraphs")
+
             print("Processing benchmark items with external model...")
             for benchmark_element in tqdm(benchmark_data):
                 ground_truth.append(benchmark_element["answer"])
@@ -115,7 +130,7 @@ def evaluate_temporal_bert_full(model_name: str, external_model_name: str, model
                 else:
                     question_emb = embedding_cache.loc[question, 'embedding']
 
-                paragraphs: List[str] = benchmark_element["paragraphs"]
+                paragraphs: List[str] = benchmark_element["paragraphs"] if not use_all_paragraphs else all_paragraphs
 
                 similarities: List[float] = []
                 

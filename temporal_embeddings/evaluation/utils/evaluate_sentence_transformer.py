@@ -10,10 +10,11 @@ import torch
 from temporal_embeddings.utils.os.folder_management import create_folders
 from temporal_embeddings.evaluation.utils.evaluation.metrics import compute_metrics
 
-def evaluate_sentence_transformer(model_name: str, max_seq_len: int, benchmark_file_path: Path, eval_id: int, top_k: int, metric: str, skip: bool) -> None:
+def evaluate_sentence_transformer(model_name: str, max_seq_len: int, benchmark_file_path: Path, eval_id: int, top_k: int, metric: str, skip: bool, use_all_paragraphs: bool = False) -> None:
     print(f"Starting SentenceTransformer evaluation for model: {model_name}")
     print(f"Benchmark file: {benchmark_file_path}")
     print(f"Max sequence length: {max_seq_len}")
+    print(f"Use all paragraphs: {use_all_paragraphs}")
     
     print("Loading SentenceTransformer model...")
     if "inf-retriever" in model_name:
@@ -55,6 +56,13 @@ def evaluate_sentence_transformer(model_name: str, max_seq_len: int, benchmark_f
             data = json.load(f)
             print(f"Loaded {len(data)} benchmark items")
 
+            if use_all_paragraphs:
+                all_paragraphs: List[str] = []
+                for item in data:
+                    all_paragraphs.extend(item["paragraphs"])
+                all_paragraphs = sorted(list(set(all_paragraphs)))
+                print(f"Using all paragraphs mode: {len(all_paragraphs)} unique paragraphs")
+
             print("Processing benchmark items...")
             for element in tqdm(data):
                 ground_truth.append(element["answer"])
@@ -74,7 +82,7 @@ def evaluate_sentence_transformer(model_name: str, max_seq_len: int, benchmark_f
                 else:
                     question_emb = embedding_cache.loc[question, 'embedding']
 
-                paragraphs: List[str] = element["paragraphs"]
+                paragraphs: List[str] = element["paragraphs"] if not use_all_paragraphs else all_paragraphs
 
                 similarities: List[float] = []
                 
