@@ -33,12 +33,12 @@ def evaluate_sutime(benchmark_file_path: Path, eval_id: int, top_k: int, metric:
     print(f"Benchmark file: {benchmark_file_path}")
     
     SIMILARITIES_FILE_PATH: Path = Path(f"output/similarities/{benchmark_file_path.stem}/{model_name}/{eval_id}_similarities.json")
-    create_folders(SIMILARITIES_FILE_PATH.parent)
+    create_folders([SIMILARITIES_FILE_PATH.parent])
     print(f"Similarities will be saved to: {SIMILARITIES_FILE_PATH}")
     print(f"Created similarities directory: {SIMILARITIES_FILE_PATH.parent}")
 
     CACHE_FILE_PATH: Path = Path(f"output/cache/{benchmark_file_path.stem}/{model_name}/{eval_id}_cache.pkl")
-    create_folders(CACHE_FILE_PATH.parent)
+    create_folders([CACHE_FILE_PATH.parent])
     print(f"Cache file path: {CACHE_FILE_PATH}")
     print(f"Created cache directory: {CACHE_FILE_PATH.parent}")
 

@@ -1,7 +1,7 @@
 import torch
 from torch import distributions
 
-from temporal_embeddings.evaluation.utils.evaluation.temporal_bert.parameters import TEMPERATURE
+from temporal_embeddings.evaluation.utils.evaluation.temporal_model.parameters import TEMPERATURE
 
 def asymmetrical_kl_sim(mu1: torch.FloatTensor, std1: torch.FloatTensor, mu2: torch.FloatTensor, std2: torch.FloatTensor) -> torch.Tensor:
     """

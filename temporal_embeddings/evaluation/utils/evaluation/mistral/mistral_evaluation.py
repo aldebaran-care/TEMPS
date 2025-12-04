@@ -11,8 +11,8 @@ from mistralai import Mistral
 from torch import Tensor
 
 from temporal_embeddings.utils.os.folder_management import create_folders
-from temporal_embeddings.evaluation.utils.evaluation.temporal_bert.parameters import MAX_SEQ_LEN
-from temporal_embeddings.evaluation.utils.evaluation.temporal_bert.temporal_bert_evaluation import evaluate_temporal_bert
+from temporal_embeddings.evaluation.utils.evaluation.temporal_model.parameters import MAX_SEQ_LEN
+from temporal_embeddings.evaluation.utils.evaluation.temporal_model.evaluate_temporal_model import evaluate_temporal_bert
 
 DATA_FILE_PATH: Path = Path("data/evaluation/time_sensitive_qa/processed_human_annotated_test.json")
 
@@ -71,7 +71,7 @@ def evaluate_mistral() -> None:
             output_similarities.append(similarities.index(max(similarities)))
 
     similarities_file_path: Path = Path(f"output/similarities/mistral/mistral_similarities.json")
-    create_folders(similarities_file_path.parent)
+    create_folders([similarities_file_path.parent])
     
     with similarities_file_path.open("w", encoding="utf-8") as g:
         json.dump(output_similarities, g, indent=4, ensure_ascii=False)

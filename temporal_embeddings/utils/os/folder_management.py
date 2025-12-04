@@ -23,14 +23,15 @@ def clear_files(folder: Path) -> None:
     for f in files:
         os.remove(f)
 
-def create_folders(path: Path) -> None:
+def create_folders(paths: list[Path]) -> None:
     """
     Creates all the needed folders in the path that are not already created.
 
     Parameters:
-        path (Path): The path where folders need to be created.
+        paths (list[Path]): The paths where folders need to be created.
 
     Returns:
         None: This function does not return any value.
     """
-    path.mkdir(parents=True, exist_ok=True)
+    for path in paths:
+        path.mkdir(parents=True, exist_ok=True)

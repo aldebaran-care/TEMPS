@@ -4,7 +4,7 @@ import argparse
 from sentence_transformers import SentenceTransformer
 from mistralai import Mistral
 
-from temporal_embeddings.evaluation.utils.evaluation.temporal_bert.inference import Inference
+from temporal_embeddings.evaluation.utils.evaluation.temporal_model.inference import Inference
 
 def evaluate_model(model_name: str, sentence: str):
     if model_name == "salesforce":

@@ -8,82 +8,37 @@ import numpy as np
 import pandas as pd
 import torch
 
-from temporal_embeddings.evaluation.utils.evaluation.temporal_bert.inference import Inference
-from temporal_embeddings.evaluation.utils.evaluation.temporal_bert.parameters import MAX_SEQ_LEN
-from temporal_embeddings.utils.os.folder_management import create_folders
+from temporal_embeddings.evaluation.utils.evaluation.temporal_model.parameters import MAX_SEQ_LEN
+from temporal_embeddings.config.set_output_files import set_output_files
 from temporal_embeddings.evaluation.utils.evaluation.metrics import compute_metrics, compute_metrics_ranks
+from temporal_embeddings.evaluation.utils.evaluation.temporal_model.compute_temporal_similarities import compute_temporal_similarities
 
-def evaluate_temporal_bert_full(model_name: str, external_model_name: str, model_path: Path, batch_size: int, max_seq_len: int, benchmark_file_path: Path, eval_id: int, top_k: int, metric: str, skip: bool = False, use_ranking: bool = False, a: float = 0.5, use_all_paragraphs: bool = False) -> None:
-    print(f"Starting TemporalBERT Full evaluation")
-    print(f"Temporal model: {model_name} at {model_path}")
-    print(f"External model: {external_model_name}")
+def evaluate_temporal_semantic_model(temporal_model_name: str, semantic_model_name: str, temporal_model_path: Path, batch_size: int, max_seq_len: int, benchmark_file_path: Path, eval_id: int, top_k: int, metric: str, skip: bool = False, use_ranking: bool = False, alpha: float = 0.5, use_all_paragraphs: bool = False) -> None:
+    print(f"Starting temporal semantic model evaluation")
+    print(f"Temporal model: {temporal_model_name} at {temporal_model_path}")
+    print(f"Semantic model: {semantic_model_name}")
     print(f"Benchmark file: {benchmark_file_path}")
     print(f"Use ranking fusion: {use_ranking}")
     print(f"Use all paragraphs: {use_all_paragraphs}")
     
-    TEMPORAL_SIMILARITIES_FILE_PATH: Path = Path(f"output/similarities/{benchmark_file_path.stem}/{model_name.replace('-full', '')}/{model_path.stem}/{eval_id}_similarities.json")
-    create_folders(TEMPORAL_SIMILARITIES_FILE_PATH.parent)
-    print(f"Temporal similarities path: {TEMPORAL_SIMILARITIES_FILE_PATH}")
+    temporal_cache_path, temporal_similarities_path, semantic_cache_path, semantic_similarities_path = set_output_files(
+        temporal_model_name=temporal_model_name,
+        temporal_model_path=temporal_model_path,
+        semantic_model_name=semantic_model_name,
+        benchmark_file_path=benchmark_file_path,
+        eval_id=eval_id
+    ).values()
 
-    TEMPORAL_CACHE_FILE_PATH: Path = Path(f"output/cache/{benchmark_file_path.stem}/{model_name.replace('-full', '')}/{model_path.stem}/{eval_id}_cache.pkl")
-    create_folders(TEMPORAL_CACHE_FILE_PATH.parent)
-    print(f"Temporal cache path: {TEMPORAL_CACHE_FILE_PATH}")
-
-    EXTERNAL_SIMILARITIES_FILE_PATH: Path = Path(f"output/similarities/{benchmark_file_path.stem}/{external_model_name}/{eval_id}_similarities.json")
-    create_folders(EXTERNAL_SIMILARITIES_FILE_PATH.parent)
-    print(f"External similarities path: {EXTERNAL_SIMILARITIES_FILE_PATH}")
-
-    EXTERNAL_CACHE_FILE_PATH: Path = Path(f"output/cache/{benchmark_file_path.stem}/{external_model_name}/{eval_id}_cache.pkl")
-    create_folders(EXTERNAL_CACHE_FILE_PATH.parent)
-    print(f"External cache path: {EXTERNAL_CACHE_FILE_PATH}")
-
-    def run_temporal_bert(model_name: str, model_path: Path, batch_size: int, max_seq_len: int) -> None:
-        print("Starting TemporalBERT evaluation...")
-        output_similarities: List[List[float]] = []
-
-        reference_date: str = "09 august 2024"
-        print(f"Using reference date: {reference_date}")
-
-        print(f"Loading benchmark data from: {benchmark_file_path}")
-        with benchmark_file_path.open("r", encoding="utf-8") as f:
-            benchmark_data = json.load(f)
-            print(f"Loaded {len(benchmark_data)} benchmark items")
-
-            if use_all_paragraphs:
-                all_paragraphs: List[str] = []
-                for item in benchmark_data:
-                    all_paragraphs.extend(item["paragraphs"])
-                all_paragraphs = sorted(list(set(all_paragraphs)))
-                print(f"Using all paragraphs mode: {len(all_paragraphs)} unique paragraphs")
-
-            print("Initializing TemporalBERT inference...")
-            if TEMPORAL_CACHE_FILE_PATH.exists():
-                print(f"Temporal cache file found at: {TEMPORAL_CACHE_FILE_PATH}")
-            else:
-                print(f"No temporal cache file found - will create new cache")
-            
-            inference: Inference = Inference(model_name=model_name, model_path=model_path, batch_size=batch_size, max_seq_len=max_seq_len, cache_file_path=TEMPORAL_CACHE_FILE_PATH)
-            print("TemporalBERT inference initialized successfully")
-
-            print("Processing benchmark items with TemporalBERT...")
-            for benchmark_item in tqdm(benchmark_data):
-                question: str = benchmark_item["question"]
-
-                paragraphs: List[str] = benchmark_item["paragraphs"] if not use_all_paragraphs else all_paragraphs
-                questions: List[str] = [question] * len(paragraphs)
-                reference_dates: List[str] = [reference_date] * len(paragraphs)
-                ground_truth: List[float] = [0.0] * len(paragraphs)
-
-                inference.set_sentences(questions, reference_dates, paragraphs, reference_dates, ground_truth)
-
-                output = inference.evaluate()
-
-                output_similarities.append(output["similarity"])
-
-        print(f"Saving TemporalBERT similarities to: {TEMPORAL_SIMILARITIES_FILE_PATH}")
-        with TEMPORAL_SIMILARITIES_FILE_PATH.open("w", encoding="utf-8") as g:
-            json.dump(output_similarities, g, indent=4, ensure_ascii=False)
-        print("TemporalBERT similarities saved successfully")
+    temporal_similarities: pd.DataFrame = compute_temporal_similarities(
+        temporal_model_name=temporal_model_name,
+        temporal_model_path=temporal_model_path,
+        batch_size=batch_size,
+        max_seq_len=max_seq_len,
+        benchmark_file_path=benchmark_file_path,
+        temporal_cache_file_path=temporal_cache_path,
+        temporal_similarities_file_path=temporal_similarities_path,
+        use_all_paragraphs=use_all_paragraphs
+    )
 
     def run_external_model(model_name: str) -> None:
         print(f"Starting external model evaluation: {model_name}")
@@ -158,8 +113,8 @@ def evaluate_temporal_bert_full(model_name: str, external_model_name: str, model
 
     if not skip:
         print("Running both models (not skipping)...")
-        run_external_model(external_model_name)
-        run_temporal_bert(model_name, model_path, batch_size, max_seq_len)
+        run_external_model(semantic_model_name)
+        run_temporal_bert(temporal_model_name, temporal_model_path, batch_size, max_seq_len)
     else:
         print("Skipping model runs - using existing similarities")
 
@@ -229,7 +184,7 @@ def evaluate_temporal_bert_full(model_name: str, external_model_name: str, model
         external_similarities = normalize_list(external_similarities)
 
         print("Merging similarities with weights (temporal: 1x, external: 2x)...")
-        merged_list = [[((a*x) + ((1-a)*y)) for x, y in zip(sublist1, sublist2)] for sublist1, sublist2 in zip(temporal_similarities, external_similarities)]
+        merged_list = [[((alpha*x) + ((1-alpha)*y)) for x, y in zip(sublist1, sublist2)] for sublist1, sublist2 in zip(temporal_similarities, external_similarities)]
 
         merged_similarities: List[List[float]] = merged_list
         print("Score fusion completed")
