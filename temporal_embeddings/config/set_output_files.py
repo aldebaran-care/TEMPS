@@ -26,36 +26,36 @@ def set_output_files(temporal_model_name: str, temporal_model_path: Path, semant
 
     output_paths = config.get("output_paths", {})
 
-    temporal_similarities_path = output_paths["temporal_similarities_path"]["default"].format(
+    temporal_similarities_path = Path(output_paths["temporal_similarities_path"]["default"].format(
         benchmark_stem=benchmark_stem,
         model_name=temporal_model_name,
         model_stem=temporal_model_path.stem,
         eval_id=eval_id
-    )
+    ))
 
-    semantic_similarities_path = output_paths["semantic_similarities_path"]["default"].format(
+    semantic_similarities_path = Path(output_paths["semantic_similarities_path"]["default"].format(
         benchmark_stem=benchmark_stem,
         external_model_name=semantic_model_name,
         eval_id=eval_id
-    )
+    ))
 
-    temporal_cache_path = output_paths["temporal_cache_path"]["default"].format(
+    temporal_cache_path = Path(output_paths["temporal_cache_path"]["default"].format(
         benchmark_stem=benchmark_stem,
         model_name=temporal_model_name,
         model_stem=temporal_model_path.stem,
         eval_id=eval_id
-    )
+    ))
 
-    semantic_cache_path = output_paths["semantic_cache_path"]["default"].format(
+    semantic_cache_path = Path(output_paths["semantic_cache_path"]["default"].format(
         benchmark_stem=benchmark_stem,
         external_model_name=semantic_model_name,
         eval_id=eval_id
-    )
+    ))
 
-    create_folders([Path(temporal_similarities_path).parent,
-                    Path(semantic_similarities_path).parent,
-                    Path(temporal_cache_path).parent,
-                    Path(semantic_cache_path).parent])
+    create_folders([temporal_similarities_path.parent,
+                    semantic_similarities_path.parent,
+                    temporal_cache_path.parent,
+                    semantic_cache_path.parent])
 
     return {
         "temporal_cache_path": temporal_cache_path,
