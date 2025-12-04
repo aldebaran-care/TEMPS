@@ -1,0 +1,30 @@
+{
+    "full": {
+        "metrics": [
+            {
+                "title": "Accuracy",
+                "name": "accuracy",
+                "at_k": 1,
+                "description": "Proportion of correct predictions over total predictions."
+            },
+            {
+                "title": "Precision",
+                "name": "precision",
+                "at_k": 5,
+                "description": "Proportion of true positive predictions among the top-k predictions."
+            },
+            {
+                "title": "Recall",
+                "name": "recall",
+                "at_k": 5,
+                "description": "Proportion of true positive predictions retrieved among all relevant instances."
+            },
+            {
+                "title": "F1 Score",
+                "name": "f1",
+                "at_k": 5,
+                "description": "Harmonic mean of precision and recall."
+            }
+        ]
+    }
+}

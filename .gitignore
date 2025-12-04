@@ -26,3 +26,6 @@ __pycache__/
 
 *.csv
 *.json
+
+# Exception: allow JSON files in config directory
+!temporal_embeddings/config/*.json
