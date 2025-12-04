@@ -1,18 +1,15 @@
-import os
 import json
 from pathlib import Path
 from typing import List, Dict
 import time
 
-from sentence_transformers import SentenceTransformer, util
+from sentence_transformers import util
 from tqdm import tqdm
 import numpy as np
 from mistralai import Mistral
 from torch import Tensor
 
 from temporal_embeddings.utils.os.folder_management import create_folders
-from temporal_embeddings.evaluation.utils.evaluation.temporal_model.parameters import MAX_SEQ_LEN
-from temporal_embeddings.evaluation.utils.evaluation.temporal_model.evaluate_temporal_model import evaluate_temporal_bert
 
 DATA_FILE_PATH: Path = Path("data/evaluation/time_sensitive_qa/processed_human_annotated_test.json")
 
