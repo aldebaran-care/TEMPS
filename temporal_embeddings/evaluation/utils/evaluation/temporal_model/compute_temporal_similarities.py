@@ -32,7 +32,7 @@ def compute_temporal_similarities(temporal_model_name: str, temporal_model_path:
             else:
                 print(f"No temporal cache file found - will create new cache")
             
-            inference: Inference = Inference(model_name=temporal_model_name, model_path=temporal_model_path, batch_size=batch_size, max_seq_len=max_seq_len, cache_file_path=temporal_cache_file_path)
+            inference: Inference = Inference(model_name=temporal_model_name, model_path=temporal_model_path, batch_size=batch_size, max_seq_len=max_seq_len, temporal_cache_file_path=temporal_cache_file_path)
             print("TemporalBERT inference initialized successfully")
 
             print("Processing benchmark items with temporal model...")
