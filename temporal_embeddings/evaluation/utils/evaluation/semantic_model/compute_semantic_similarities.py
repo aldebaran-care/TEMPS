@@ -190,24 +190,34 @@ def compute_salesforce_similarities(benchmark_file_path: Path, semantic_cache_fi
     
     print("\n=== STAGE 2: Computing Similarities ===")
     output_similarities_cache: pd.DataFrame = pd.DataFrame(columns=all_paragraphs)
-    
-    for benchmark_item in tqdm(benchmark_data, desc="Computing similarities"):
-        question: str = benchmark_item["question"]
-        question_emb = embedding_cache.loc[question, 'embedding']
+
+    if semantic_similarities_file_path.exists():
+        print(f"Semantic similarities file found at: {semantic_similarities_file_path}")
+        output_similarities_cache = pd.read_pickle(semantic_similarities_file_path)
+        print(f"Loaded similarities cache with {len(output_similarities_cache)} entries")
+    else:
+        print(f"No semantic similarities file found - will create new similarities cache")
         
-        paragraphs: List[str] = benchmark_item["paragraphs"] if not use_all_paragraphs else all_paragraphs
+        paragraph_embeddings = torch.stack([
+            torch.Tensor(embedding_cache.loc[paragraph, 'embedding']) 
+            for paragraph in all_paragraphs
+        ])
         
-        similarities: List[float] = []
+        def compute_question_similarities(question: str) -> pd.Series:
+            question_emb = torch.Tensor(embedding_cache.loc[question, 'embedding']).unsqueeze(0)
+            similarities = util.cos_sim(question_emb, paragraph_embeddings)[0]
+            return pd.Series(similarities.cpu().numpy(), index=all_paragraphs)
         
-        for paragraph in paragraphs:
-            paragraph_emb = embedding_cache.loc[paragraph, 'embedding']
-            similarities.append(float(util.cos_sim(torch.Tensor(question_emb).cpu(), torch.Tensor(paragraph_emb).cpu())[0].item()))
+        questions = [item["question"] for item in benchmark_data]
         
-        row = {k: v for k, v in zip(all_paragraphs, similarities)}
-        output_similarities_cache.loc[question] = row
-    
-    print(f"Saving semantic model similarities to: {semantic_similarities_file_path}")
-    output_similarities_cache.to_pickle(semantic_similarities_file_path)
-    print("Salesforce similarities saved successfully")
+        print("Computing similarities using vectorized operations...")
+        output_similarities_cache = pd.DataFrame([
+            compute_question_similarities(question) 
+            for question in tqdm(questions, desc="Computing similarities")
+        ], index=questions)
+        
+        print(f"Saving semantic model similarities to: {semantic_similarities_file_path}")
+        output_similarities_cache.to_pickle(semantic_similarities_file_path)
+        print("Semantic similarities saved successfully")
     
     return output_similarities_cache
