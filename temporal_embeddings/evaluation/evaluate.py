@@ -22,9 +22,6 @@ def evaluate_model(model_name: str, external_model_name: str, model_path: Path, 
     
     elif model_name == "alibaba":
         evaluate_alibaba()
-    
-    elif model_name == "salesforce":
-        evaluate_salesforce(dataset_file_path, eval_id, top_k, metric, skip, use_all_paragraphs)
 
     else:
         evaluate_semantic_model(model_name, max_seq_len, dataset_file_path, eval_id, top_k, metric, skip, use_all_paragraphs)
