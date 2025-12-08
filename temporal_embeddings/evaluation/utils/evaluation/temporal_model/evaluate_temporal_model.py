@@ -8,7 +8,7 @@ from temporal_embeddings.evaluation.utils.evaluation.temporal_model.compute_temp
 from temporal_embeddings.config.set_output_files import set_output_files
 from temporal_embeddings.evaluation.utils.evaluation.metrics import compute_metrics
 
-def evaluate_temporal_model(temporal_model_name: str, temporal_model_path: Path, batch_size: int, max_seq_len: int, benchmark_file_path: Path, eval_id: int, top_k: int, metric: str, skip: bool = False, use_all_paragraphs: bool = False, reference_date: str = "09 august 2024") -> None:
+def evaluate_temporal_model(temporal_model_name: str, temporal_model_path: Path, batch_size: int, max_seq_len: int, benchmark_file_path: Path, eval_id: int, top_k: int, metric: str, use_all_paragraphs: bool = False, reference_date: str = "09 august 2024") -> None:
     print(f"Starting temporal model evaluation for model: {temporal_model_name}")
     print(f"Model path: {temporal_model_path}")
     print(f"Benchmark file: {benchmark_file_path}")
@@ -21,7 +21,7 @@ def evaluate_temporal_model(temporal_model_name: str, temporal_model_path: Path,
         eval_id=eval_id
     ).values()
 
-    if not skip:
+    if not temporal_similarities_path.exists():
         print("Starting similarity computation phase...")
         
         temporal_similarities = compute_temporal_similarities(

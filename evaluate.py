@@ -13,14 +13,13 @@ def main():
     parser.add_argument("--eval_id", type=int, required=True, help="Evaluation ID to identify the experiment")
     parser.add_argument("--top_k", type=int, default=1, help="Value of k for top-k accuracy")
     parser.add_argument("--metric", type=str, default="top", choices=["all", "top", "mrr", "ndcg", "precision", "recall", "f1"], help="Metric to use for evaluation")
-    parser.add_argument("--skip", action="store_true", help="Skip model evaluation")
     parser.add_argument("--external_model_name", type=str, default="", help="Name of external model to integrate with temporal embeddings")
     parser.add_argument("--use_ranking", action="store_true", help="Use ranking for evaluation")
     parser.add_argument("--a", type=float, default=0.5, help="Parameter a for merged similarity computation")
     parser.add_argument("--use_all_paragraphs", action="store_true", help="Use all paragraphs for evaluation")
     args = parser.parse_args()
 
-    evaluate_model(args.model_name, args.external_model_name, Path(args.model_path), args.batch_size, args.max_seq_len, args.benchmark, args.eval_id, args.top_k, args.metric, args.skip, args.use_ranking, args.a, args.use_all_paragraphs)
+    evaluate_model(args.model_name, args.external_model_name, Path(args.model_path), args.batch_size, args.max_seq_len, args.benchmark, args.eval_id, args.top_k, args.metric, args.use_ranking, args.a, args.use_all_paragraphs)
 
 if __name__ == "__main__":
     main()

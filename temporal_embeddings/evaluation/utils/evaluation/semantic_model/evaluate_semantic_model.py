@@ -8,7 +8,7 @@ from temporal_embeddings.evaluation.utils.evaluation.semantic_model.compute_sema
 from temporal_embeddings.config.set_output_files import set_output_files
 from temporal_embeddings.evaluation.utils.evaluation.metrics import compute_metrics
 
-def evaluate_semantic_model(semantic_model_name: str, max_seq_len: int, benchmark_file_path: Path, eval_id: int, top_k: int, metric: str, skip: bool = False, use_all_paragraphs: bool = False) -> None:
+def evaluate_semantic_model(semantic_model_name: str, max_seq_len: int, benchmark_file_path: Path, eval_id: int, top_k: int, metric: str, use_all_paragraphs: bool = False) -> None:
     print(f"Starting semantic model evaluation for model: {semantic_model_name}")
     print(f"Benchmark file: {benchmark_file_path}")
     
@@ -20,7 +20,7 @@ def evaluate_semantic_model(semantic_model_name: str, max_seq_len: int, benchmar
         eval_id=eval_id
     ).values()
 
-    if not skip:
+    if not semantic_similarities_path.exists():
         print("Starting similarity computation phase...")
         
         semantic_similarities = compute_semantic_similarities(
