@@ -15,7 +15,6 @@ def evaluate_temporal_semantic_model(temporal_model_name: str, semantic_model_na
     print(f"Temporal model: {temporal_model_name} at {temporal_model_path}")
     print(f"Semantic model: {semantic_model_name}")
     print(f"Benchmark file: {benchmark_file_path}")
-    print(f"Use ranking fusion: {use_ranking}")
     print(f"Use all paragraphs: {use_all_paragraphs}")
     
     temporal_cache_path, temporal_similarities_path, semantic_cache_path, semantic_similarities_path = set_output_files(
