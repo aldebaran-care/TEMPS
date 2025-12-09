@@ -85,7 +85,6 @@ def compute_temporal_similarities(temporal_model_name: str, temporal_model_path:
                 print("\n=== STAGE 2: Computing Similarities ===")
                 print("Computing similarities using cached embeddings...")
 
-                # Extract all embeddings into tensors for vectorized operations
                 paragraph_mu = torch.stack([
                     torch.FloatTensor(embedding_cache.loc[paragraph, 'mu']) 
                     for paragraph in all_paragraphs
@@ -101,7 +100,6 @@ def compute_temporal_similarities(temporal_model_name: str, temporal_model_path:
                     question_mu = torch.FloatTensor(embedding_cache.loc[question, 'mu']).unsqueeze(0)
                     question_std = torch.FloatTensor(embedding_cache.loc[question, 'std']).unsqueeze(0)
                     
-                    # Create GaussOutput objects for vectorized similarity computation
                     question_emb = type('GaussOutput', (), {'mu': question_mu.expand(len(all_paragraphs), -1), 'std': question_std.expand(len(all_paragraphs), -1)})()
                     paragraph_emb = type('GaussOutput', (), {'mu': paragraph_mu, 'std': paragraph_std})()
                     

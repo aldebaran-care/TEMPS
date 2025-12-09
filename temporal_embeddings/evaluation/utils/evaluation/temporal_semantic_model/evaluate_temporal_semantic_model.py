@@ -1,6 +1,6 @@
 from pathlib import Path
 import json
-from typing import List
+from typing import List, Dict
 
 import pandas as pd
 
@@ -9,6 +9,7 @@ from temporal_embeddings.evaluation.utils.evaluation.metrics import compute_metr
 from temporal_embeddings.evaluation.utils.evaluation.temporal_model.compute_temporal_similarities import compute_temporal_similarities
 from temporal_embeddings.evaluation.utils.evaluation.semantic_model.compute_semantic_similarities import compute_semantic_similarities
 from temporal_embeddings.utils.math.normalize import normalize_list
+from temporal_embeddings.evaluation.utils.notion.notion import log_metrics_to_notion
 
 def evaluate_temporal_semantic_model(temporal_model_name: str, semantic_model_name: str, temporal_model_path: Path, batch_size: int, max_seq_len: int, benchmark: str, benchmark_file_path: Path, eval_id: int, top_k: int, metric: str, alpha: float = 0.5, use_all_paragraphs: bool = False) -> None:
     print(f"Starting temporal semantic model evaluation")
@@ -89,6 +90,9 @@ def evaluate_temporal_semantic_model(temporal_model_name: str, semantic_model_na
             ground_truth.append(e["answer"])
 
     print(f"Computing score metrics with top_k={top_k}, metric={metric}")
-    print(compute_metrics(ground_truth, merged_similarities, top_k, metric))
-    
-    print("TemporalBERT Full evaluation completed successfully")
+
+    results: Dict[str, float]= compute_metrics(ground_truth, merged_similarities, top_k, metric)
+    log_metrics_to_notion(id=str(eval_id), model=f"{temporal_model_name}+{semantic_model_name}", benchmark=benchmark, metrics=results, k=top_k)
+
+    print(results)
+    print("Temporal semantic model evaluation completed successfully")
