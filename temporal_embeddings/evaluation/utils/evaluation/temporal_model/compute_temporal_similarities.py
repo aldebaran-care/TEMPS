@@ -33,18 +33,58 @@ def compute_temporal_similarities(temporal_model_name: str, temporal_model_path:
             else:
                 print(f"No temporal similarities file found - will create new similarities cache")
                 
-                print("Initializing temporal model inference...")
+                print("Initializing embedding cache...")
+                embedding_cache: pd.DataFrame = pd.DataFrame(columns=['mu', 'std', 'dates'])
+                
                 if temporal_cache_file_path.exists():
                     print(f"Temporal cache file found at: {temporal_cache_file_path}")
+                    embedding_cache = pd.read_pickle(temporal_cache_file_path)
+                    print(f"Loaded cache with {len(embedding_cache)} embeddings")
                 else:
                     print(f"No temporal cache file found - will create new cache")
                 
-                inference: Inference = Inference(model_name=temporal_model_name, model_path=temporal_model_path, batch_size=batch_size, max_seq_len=max_seq_len, temporal_cache_file_path=temporal_cache_file_path)
-                print("Temporal model inference initialized successfully")
+                    print("Initializing temporal model inference...")
+                    inference: Inference = Inference(model_name=temporal_model_name, model_path=temporal_model_path, batch_size=batch_size, max_seq_len=max_seq_len)
+                    print("Temporal model inference initialized successfully")
 
-                print("Processing benchmark items with temporal model...")
+                    print("\n=== STAGE 1: Computing Embeddings ===")
+                    print("Collecting texts to encode...")
+                    
+                    questions_to_encode = []
+                    paragraphs_to_encode = []
+                    
+                    for benchmark_item in tqdm(benchmark_data, desc="Collecting texts"):
+                        question: str = benchmark_item["question"]
+                        if question not in embedding_cache.index:
+                            questions_to_encode.append(question)
+                        
+                        paragraphs: List[str] = benchmark_item["paragraphs"] if not use_all_paragraphs else all_paragraphs
+                        for paragraph in paragraphs:
+                            if paragraph not in embedding_cache.index and paragraph not in paragraphs_to_encode:
+                                paragraphs_to_encode.append(paragraph)
+                    
+                    print(f"Found {len(questions_to_encode)} questions and {len(paragraphs_to_encode)} paragraphs to encode")
+                    
+                    if questions_to_encode:
+                        print("Computing question embeddings...")
+                        question_dates = [reference_date] * len(questions_to_encode)
+                        question_embeddings = inference.compute_embeddings(questions_to_encode, question_dates)
+                        embedding_cache = pd.concat([embedding_cache, question_embeddings])
+                    
+                    if paragraphs_to_encode:
+                        print("Computing paragraph embeddings...")
+                        paragraph_dates = [reference_date] * len(paragraphs_to_encode)
+                        paragraph_embeddings = inference.compute_embeddings(paragraphs_to_encode, paragraph_dates)
+                        embedding_cache = pd.concat([embedding_cache, paragraph_embeddings])
+                    
+                    print(f"Saving temporal cache to: {temporal_cache_file_path}")
+                    embedding_cache.to_pickle(temporal_cache_file_path)
+                    print(f"Cache saved with {len(embedding_cache)} embeddings")
 
-                for benchmark_item in tqdm(benchmark_data):
+                print("\n=== STAGE 2: Computing Similarities ===")
+                print("Computing similarities using cached embeddings...")
+
+                for benchmark_item in tqdm(benchmark_data, desc="Computing similarities"):
                     question: str = benchmark_item["question"]
 
                     paragraphs: List[str] = benchmark_item["paragraphs"] if not use_all_paragraphs else all_paragraphs
@@ -54,7 +94,7 @@ def compute_temporal_similarities(temporal_model_name: str, temporal_model_path:
 
                     inference.set_sentences(questions, reference_dates, paragraphs, reference_dates, ground_truth)
 
-                    output = inference.evaluate()
+                    output = inference.evaluate(embedding_cache)
                     
                     row = {k: v for k, v in zip(all_paragraphs, output["similarity"])}
 
