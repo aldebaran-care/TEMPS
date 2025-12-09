@@ -25,7 +25,8 @@ def log_metrics_to_notion(
     external_model: str = None,
     command: str = None,
     comment: str = None,
-    k: int = None
+    k: int = None,
+    alpha: float = None
 ):
     properties = {
         "ID": {"title": [{"text": {"content": id}}]},
@@ -44,6 +45,9 @@ def log_metrics_to_notion(
 
     if k is not None:
         properties["K"] = {"number": k}
+
+    if alpha is not None:
+        properties["Alpha"] = {"number": alpha}
 
     for key, value in metrics.items():
         properties[key] = {"number": value}

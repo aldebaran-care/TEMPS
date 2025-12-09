@@ -92,7 +92,7 @@ def evaluate_temporal_semantic_model(temporal_model_name: str, semantic_model_na
     print(f"Computing score metrics with top_k={top_k}, metric={metric}")
 
     results: Dict[str, float]= compute_metrics(ground_truth, merged_similarities, top_k, metric)
-    log_metrics_to_notion(id=str(eval_id), model=f"{temporal_model_name}+{semantic_model_name}", benchmark=benchmark, metrics=results, k=top_k)
+    log_metrics_to_notion(id=str(eval_id), model=temporal_model_name, external_model=semantic_model_name, benchmark=benchmark, metrics=results, k=top_k, alpha=alpha)
 
     print(results)
     print("Temporal semantic model evaluation completed successfully")
