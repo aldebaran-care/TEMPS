@@ -72,5 +72,4 @@ log_metrics_to_notion(
     dataset="test-dataset",
     metrics=metrics,
     comment="The worst run yet",
-    time=date.today()
 )
