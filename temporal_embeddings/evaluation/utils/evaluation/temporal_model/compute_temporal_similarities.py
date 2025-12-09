@@ -11,6 +11,10 @@ def compute_temporal_similarities(temporal_model_name: str, temporal_model_path:
         print("Starting temporal model embeddings computation...")
         print(f"Using reference date: {reference_date}")
 
+        print("Initializing temporal model inference...")
+        inference: Inference = Inference(model_name=temporal_model_name, model_path=temporal_model_path, batch_size=batch_size, max_seq_len=max_seq_len)
+        print("Temporal model inference initialized successfully")
+
         print(f"Loading benchmark data from: {benchmark_file_path}")
         with benchmark_file_path.open("r", encoding="utf-8") as f:
             benchmark_data = json.load(f)
@@ -42,10 +46,6 @@ def compute_temporal_similarities(temporal_model_name: str, temporal_model_path:
                     print(f"Loaded cache with {len(embedding_cache)} embeddings")
                 else:
                     print(f"No temporal cache file found - will create new cache")
-                
-                    print("Initializing temporal model inference...")
-                    inference: Inference = Inference(model_name=temporal_model_name, model_path=temporal_model_path, batch_size=batch_size, max_seq_len=max_seq_len)
-                    print("Temporal model inference initialized successfully")
 
                     print("\n=== STAGE 1: Computing Embeddings ===")
                     print("Collecting texts to encode...")
