@@ -1,9 +1,7 @@
 from pathlib import Path
 import json
-from typing import Dict, List, Tuple
+from typing import Dict, List
 
-from stanza.server import CoreNLPClient
-from tqdm import tqdm
 import pandas as pd
 
 from temporal_embeddings.evaluation.utils.evaluation.metrics import compute_metrics
