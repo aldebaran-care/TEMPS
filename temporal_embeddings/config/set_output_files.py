@@ -19,6 +19,9 @@ def set_output_files(temporal_model_name: str, temporal_model_path: Path, semant
     Returns:
         dict: Updated configuration dictionary with output file paths set.
     """
+    if temporal_model_name.endswith("-full"):
+        temporal_model_name = temporal_model_name[:-5]
+
     with open('temporal_embeddings/config/output_config.json', 'r') as f:
         config = json.load(f)
 
