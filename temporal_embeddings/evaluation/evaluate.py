@@ -13,14 +13,14 @@ def evaluate_model(model_name: str, external_model_name: str, model_path: Path, 
     if model_name in ["temporal_bert", "all-minilm-l6-v2"]:
         evaluate_temporal_model(model_name, model_path, batch_size, max_seq_len, benchmark, benchmark_file_path, eval_id, top_k, metric, num_negative_samples)
     
-    # elif model_name in ["temporal_bert_full", "all-minilm-l6-v2-full"]:
-    #     evaluate_temporal_semantic_model(model_name, external_model_name, model_path, batch_size, max_seq_len, benchmark, benchmark_file_path, eval_id, top_k, metric, alpha, num_negative_samples)
+    elif model_name in ["temporal_bert_full", "all-minilm-l6-v2-full"]:
+        evaluate_temporal_semantic_model(model_name, external_model_name, model_path, batch_size, max_seq_len, benchmark, benchmark_file_path, eval_id, top_k, metric, alpha, num_negative_samples)
 
-    # elif model_name == "bm25":
-    #     evaluate_bm25(model_name, benchmark, benchmark_file_path, eval_id, top_k, metric, num_negative_samples)
+    elif model_name == "bm25":
+        evaluate_bm25(model_name, benchmark, benchmark_file_path, eval_id, top_k, metric, num_negative_samples)
 
-    # elif model_name == "sutime":
-    #     evaluate_sutime(model_name, benchmark, benchmark_file_path, eval_id, top_k, metric, num_negative_samples)
+    elif model_name == "sutime":
+        evaluate_sutime(model_name, benchmark, benchmark_file_path, eval_id, top_k, metric, num_negative_samples)
 
     else:
         evaluate_semantic_model(model_name, max_seq_len, benchmark, benchmark_file_path, eval_id, top_k, metric, num_negative_samples)
