@@ -10,7 +10,7 @@ from temporal_embeddings.evaluation.utils.evaluation.temporal_model.compute_temp
 from temporal_embeddings.evaluation.utils.evaluation.semantic_model.compute_semantic_similarities import compute_semantic_similarities
 from temporal_embeddings.utils.math.normalize import normalize_list
 
-def evaluate_temporal_semantic_model(temporal_model_name: str, semantic_model_name: str, temporal_model_path: Path, batch_size: int, max_seq_len: int, benchmark_file_path: Path, eval_id: int, top_k: int, metric: str, alpha: float = 0.5, use_all_paragraphs: bool = False) -> None:
+def evaluate_temporal_semantic_model(temporal_model_name: str, semantic_model_name: str, temporal_model_path: Path, batch_size: int, max_seq_len: int, benchmark: str, benchmark_file_path: Path, eval_id: int, top_k: int, metric: str, alpha: float = 0.5, use_all_paragraphs: bool = False) -> None:
     print(f"Starting temporal semantic model evaluation")
     print(f"Temporal model: {temporal_model_name} at {temporal_model_path}")
     print(f"Semantic model: {semantic_model_name}")
@@ -21,7 +21,7 @@ def evaluate_temporal_semantic_model(temporal_model_name: str, semantic_model_na
         temporal_model_name=temporal_model_name,
         temporal_model_path=temporal_model_path,
         semantic_model_name=semantic_model_name,
-        benchmark_file_path=benchmark_file_path,
+        benchmark=benchmark,
         eval_id=eval_id
     ).values()
 

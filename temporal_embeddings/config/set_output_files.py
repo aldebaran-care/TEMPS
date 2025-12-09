@@ -4,7 +4,7 @@ import json
 
 from temporal_embeddings.utils.os.folder_management import create_folders
 
-def set_output_files(temporal_model_name: str, temporal_model_path: Path, semantic_model_name: str, benchmark_file_path: Path, eval_id: int) -> Dict:
+def set_output_files(temporal_model_name: str, temporal_model_path: Path, semantic_model_name: str, benchmark: str, eval_id: int) -> Dict:
     """
     Set the output file paths in the configuration dictionary based on the provided parameters.
 
@@ -22,32 +22,30 @@ def set_output_files(temporal_model_name: str, temporal_model_path: Path, semant
     with open('temporal_embeddings/config/output_config.json', 'r') as f:
         config = json.load(f)
 
-    benchmark_stem = benchmark_file_path.stem
-
     output_paths = config.get("output_paths", {})
 
     temporal_similarities_path = Path(output_paths["temporal_similarities_path"]["default"].format(
-        benchmark_stem=benchmark_stem,
+        benchmark_stem=benchmark,
         model_name=temporal_model_name,
         model_stem=temporal_model_path.stem,
         eval_id=eval_id
     ))
 
     semantic_similarities_path = Path(output_paths["semantic_similarities_path"]["default"].format(
-        benchmark_stem=benchmark_stem,
+        benchmark_stem=benchmark,
         external_model_name=semantic_model_name,
         eval_id=eval_id
     ))
 
     temporal_cache_path = Path(output_paths["temporal_cache_path"]["default"].format(
-        benchmark_stem=benchmark_stem,
+        benchmark_stem=benchmark,
         model_name=temporal_model_name,
         model_stem=temporal_model_path.stem,
         eval_id=eval_id
     ))
 
     semantic_cache_path = Path(output_paths["semantic_cache_path"]["default"].format(
-        benchmark_stem=benchmark_stem,
+        benchmark_stem=benchmark,
         external_model_name=semantic_model_name,
         eval_id=eval_id
     ))
