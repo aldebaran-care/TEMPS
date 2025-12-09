@@ -37,7 +37,7 @@ class Inference:
     def data_loader(self, sentences: List[str]):
         return DataLoader(sentences, collate_fn=self.tokenize, batch_size=self.batch_size, shuffle=False, num_workers=NUM_WORKERS, pin_memory=True, drop_last=False)
 
-    def sim_fn(self, sent1_emb: GaussOutput, sent2_emb: GaussOutput) -> float:
+    def sim_fn(self, sent1_emb: GaussOutput, sent2_emb: GaussOutput):
         return asymmetrical_kl_sim(sent1_emb.mu, sent1_emb.std, sent2_emb.mu, sent2_emb.std)
 
     @torch.inference_mode()

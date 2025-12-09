@@ -4,6 +4,7 @@ from typing import List
 
 from tqdm import tqdm
 import pandas as pd
+import torch
 
 from temporal_embeddings.evaluation.utils.evaluation.temporal_model.inference import Inference
 
@@ -84,21 +85,34 @@ def compute_temporal_similarities(temporal_model_name: str, temporal_model_path:
                 print("\n=== STAGE 2: Computing Similarities ===")
                 print("Computing similarities using cached embeddings...")
 
-                for benchmark_item in tqdm(benchmark_data, desc="Computing similarities"):
-                    question: str = benchmark_item["question"]
-
-                    paragraphs: List[str] = benchmark_item["paragraphs"] if not use_all_paragraphs else all_paragraphs
-                    questions: List[str] = [question] * len(paragraphs)
-                    reference_dates: List[str] = [reference_date] * len(paragraphs)
-                    ground_truth: List[float] = [0.0] * len(paragraphs)
-
-                    inference.set_sentences(questions, reference_dates, paragraphs, reference_dates, ground_truth)
-
-                    output = inference.evaluate(embedding_cache)
+                # Extract all embeddings into tensors for vectorized operations
+                paragraph_mu = torch.stack([
+                    torch.FloatTensor(embedding_cache.loc[paragraph, 'mu']) 
+                    for paragraph in all_paragraphs
+                ])
+                paragraph_std = torch.stack([
+                    torch.FloatTensor(embedding_cache.loc[paragraph, 'std']) 
+                    for paragraph in all_paragraphs
+                ])
+                
+                questions = [item["question"] for item in benchmark_data]
+                
+                def compute_question_similarities(question: str) -> pd.Series:
+                    question_mu = torch.FloatTensor(embedding_cache.loc[question, 'mu']).unsqueeze(0)
+                    question_std = torch.FloatTensor(embedding_cache.loc[question, 'std']).unsqueeze(0)
                     
-                    row = {k: v for k, v in zip(all_paragraphs, output["similarity"])}
-
-                    output_similarities_cache.loc[question] = row
+                    # Create GaussOutput objects for vectorized similarity computation
+                    question_emb = type('GaussOutput', (), {'mu': question_mu.expand(len(all_paragraphs), -1), 'std': question_std.expand(len(all_paragraphs), -1)})()
+                    paragraph_emb = type('GaussOutput', (), {'mu': paragraph_mu, 'std': paragraph_std})()
+                    
+                    similarities = inference.sim_fn(question_emb, paragraph_emb)
+                    return pd.Series([s.item() for s in similarities], index=all_paragraphs)
+                
+                print("Computing similarities using vectorized operations...")
+                output_similarities_cache = pd.DataFrame([
+                    compute_question_similarities(question) 
+                    for question in tqdm(questions, desc="Computing similarities")
+                ], index=questions)
 
                 print(f"Saving temporal model similarities to: {temporal_similarities_file_path}")
                 output_similarities_cache.to_pickle(temporal_similarities_file_path)
