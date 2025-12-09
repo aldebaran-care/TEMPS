@@ -11,12 +11,11 @@ from temporal_embeddings.evaluation.utils.evaluation.semantic_model.compute_sema
 from temporal_embeddings.utils.math.normalize import normalize_list
 from temporal_embeddings.evaluation.utils.notion.notion import log_metrics_to_notion
 
-def evaluate_temporal_semantic_model(temporal_model_name: str, semantic_model_name: str, temporal_model_path: Path, batch_size: int, max_seq_len: int, benchmark: str, benchmark_file_path: Path, eval_id: int, top_k: int, metric: str, alpha: float = 0.5, use_all_paragraphs: bool = False) -> None:
+def evaluate_temporal_semantic_model(temporal_model_name: str, semantic_model_name: str, temporal_model_path: Path, batch_size: int, max_seq_len: int, benchmark: str, benchmark_file_path: Path, eval_id: int, top_k: int, metric: str, alpha: float = 0.5, num_negative_samples: int = 0) -> None:
     print(f"Starting temporal semantic model evaluation")
     print(f"Temporal model: {temporal_model_name} at {temporal_model_path}")
     print(f"Semantic model: {semantic_model_name}")
     print(f"Benchmark file: {benchmark_file_path}")
-    print(f"Use all paragraphs: {use_all_paragraphs}")
     
     temporal_cache_path, temporal_similarities_path, semantic_cache_path, semantic_similarities_path = set_output_files(
         temporal_model_name=temporal_model_name,
@@ -57,7 +56,7 @@ def evaluate_temporal_semantic_model(temporal_model_name: str, semantic_model_na
             benchmark_file_path=benchmark_file_path,
             semantic_cache_file_path=semantic_cache_path,
             semantic_similarities_file_path=semantic_similarities_path,
-            use_all_paragraphs=use_all_paragraphs
+            num_negative_samples=num_negative_samples
         )
 
     else:

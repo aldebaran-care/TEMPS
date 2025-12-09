@@ -8,8 +8,9 @@ from temporal_embeddings.evaluation.utils.evaluation.temporal_model.compute_temp
 from temporal_embeddings.config.set_output_files import set_output_files
 from temporal_embeddings.evaluation.utils.evaluation.metrics import compute_metrics
 from temporal_embeddings.evaluation.utils.notion.notion import log_metrics_to_notion
+from temporal_embeddings.evaluation.utils.data.random_paragraphs import add_negative_samples
 
-def evaluate_temporal_model(temporal_model_name: str, temporal_model_path: Path, batch_size: int, max_seq_len: int, benchmark: str, benchmark_file_path: Path, eval_id: int, top_k: int, metric: str, use_all_paragraphs: bool = False, reference_date: str = "09 august 2024") -> None:
+def evaluate_temporal_model(temporal_model_name: str, temporal_model_path: Path, batch_size: int, max_seq_len: int, benchmark: str, benchmark_file_path: Path, eval_id: int, top_k: int, metric: str, num_negative_samples: int = 0, reference_date: str = "09 august 2024") -> None:
     print(f"Starting temporal model evaluation for model: {temporal_model_name}")
     print(f"Model path: {temporal_model_path}")
     print(f"Benchmark file: {benchmark_file_path}")
@@ -33,7 +34,7 @@ def evaluate_temporal_model(temporal_model_name: str, temporal_model_path: Path,
             benchmark_file_path=benchmark_file_path,
             temporal_cache_file_path=temporal_cache_path,
             temporal_similarities_file_path=temporal_similarities_path,
-            use_all_paragraphs=use_all_paragraphs,
+            num_negative_samples=num_negative_samples,
             reference_date=reference_date
         )
     else:
@@ -42,20 +43,27 @@ def evaluate_temporal_model(temporal_model_name: str, temporal_model_path: Path,
         print(f"Loading similarities from: {temporal_similarities_path}")
         temporal_similarities: pd.DataFrame = pd.read_pickle(temporal_similarities_path)
 
-    similarities_list: List[List[float]] = temporal_similarities.to_numpy().tolist()
-    
-    print(f"Loaded {len(temporal_similarities)} similarity lists")
-    
     print("Loading ground truth data...")
     ground_truth: List[List[int]] = []
 
     with open(benchmark_file_path, "r") as f:
-        benchmark_data: List[dict] = json.load(f)
+        benchmark_data: List[dict] = add_negative_samples(json.load(f), num_negative_samples=num_negative_samples)
 
         for e in benchmark_data:
             ground_truth.append(e["answer"])
     
     print(f"Loaded ground truth for {len(ground_truth)} items")
+    
+    print("Filtering similarities to only include candidate paragraphs...")
+    similarities_list: List[List[float]] = []
+    
+    for idx, benchmark_item in enumerate(benchmark_data):
+        candidate_paragraphs = benchmark_item["paragraphs"]
+        question_similarities = temporal_similarities.iloc[idx][candidate_paragraphs].tolist()
+        similarities_list.append(question_similarities)
+    
+    print(f"Filtered to {len(similarities_list)} similarity lists with candidate paragraphs only")
+    
     print(f"Computing metrics with top_k={top_k}, metric={metric}")
     
     results: Dict[str, float]= compute_metrics(ground_truth, similarities_list, top_k, metric)

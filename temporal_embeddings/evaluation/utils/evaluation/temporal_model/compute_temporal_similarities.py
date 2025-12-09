@@ -7,8 +7,9 @@ import pandas as pd
 import torch
 
 from temporal_embeddings.evaluation.utils.evaluation.temporal_model.inference import Inference
+from temporal_embeddings.evaluation.utils.data.random_paragraphs import add_negative_samples
 
-def compute_temporal_similarities(temporal_model_name: str, temporal_model_path: Path, batch_size: int, max_seq_len: int, benchmark_file_path: Path, temporal_cache_file_path: Path, temporal_similarities_file_path: Path, use_all_paragraphs: bool = True, reference_date: str = "09 august 2024") -> pd.DataFrame:
+def compute_temporal_similarities(temporal_model_name: str, temporal_model_path: Path, batch_size: int, max_seq_len: int, benchmark_file_path: Path, temporal_cache_file_path: Path, temporal_similarities_file_path: Path, num_negative_samples: int = 0, reference_date: str = "09 august 2024") -> pd.DataFrame:        
         print("Starting temporal model embeddings computation...")
         print(f"Using reference date: {reference_date}")
 
@@ -18,16 +19,14 @@ def compute_temporal_similarities(temporal_model_name: str, temporal_model_path:
 
         print(f"Loading benchmark data from: {benchmark_file_path}")
         with benchmark_file_path.open("r", encoding="utf-8") as f:
-            benchmark_data = json.load(f)
+            benchmark_data = add_negative_samples(json.load(f), num_negative_samples=num_negative_samples)
             print(f"Loaded {len(benchmark_data)} benchmark items")
 
-            if use_all_paragraphs:
-                all_paragraphs: List[str] = []
-                for item in benchmark_data:
-                    all_paragraphs.extend(item["paragraphs"])
-                
-                all_paragraphs = sorted(list(set(all_paragraphs)))
-                print(f"Using all paragraphs mode: {len(all_paragraphs)} unique paragraphs")
+            all_paragraphs: List[str] = []
+            for item in benchmark_data:
+                all_paragraphs.extend(item["paragraphs"])
+            
+            all_paragraphs = sorted(list(set(all_paragraphs)))
 
             output_similarities_cache: pd.DataFrame = pd.DataFrame(columns=all_paragraphs)
 
@@ -59,7 +58,7 @@ def compute_temporal_similarities(temporal_model_name: str, temporal_model_path:
                         if question not in embedding_cache.index:
                             questions_to_encode.append(question)
                         
-                        paragraphs: List[str] = benchmark_item["paragraphs"] if not use_all_paragraphs else all_paragraphs
+                        paragraphs: List[str] = benchmark_item["paragraphs"]
                         for paragraph in paragraphs:
                             if paragraph not in embedding_cache.index and paragraph not in paragraphs_to_encode:
                                 paragraphs_to_encode.append(paragraph)

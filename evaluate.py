@@ -16,10 +16,10 @@ def main():
     parser.add_argument("--external_model_name", type=str, default="", help="Name of external model to integrate with temporal embeddings")
     parser.add_argument("--use_ranking", action="store_true", help="Use ranking for evaluation")
     parser.add_argument("--alpha", type=float, default=0.5, help="Parameter a for merged similarity computation")
-    parser.add_argument("--use_all_paragraphs", action="store_true", help="Use all paragraphs for evaluation")
+    parser.add_argument("--num_negative_samples", type=int, default=0, help="Number of paragraphs to consider if not using all")
     args = parser.parse_args()
 
-    evaluate_model(args.model_name, args.external_model_name, Path(args.model_path), args.batch_size, args.max_seq_len, args.benchmark, args.eval_id, args.top_k, args.metric, args.alpha, args.use_all_paragraphs)
+    evaluate_model(args.model_name, args.external_model_name, Path(args.model_path), args.batch_size, args.max_seq_len, args.benchmark, args.eval_id, args.top_k, args.metric, args.alpha, args.num_negative_samples)
 
 if __name__ == "__main__":
     main()
