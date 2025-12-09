@@ -7,6 +7,7 @@ from temporal_embeddings.evaluation.utils.evaluation.alibaba.alibaba_evaluation 
 from temporal_embeddings.evaluation.utils.dataset_file_path import get_dataset_file_path
 from temporal_embeddings.evaluation.utils.evaluation.semantic_model.evaluate_semantic_model import evaluate_semantic_model
 from temporal_embeddings.evaluation.utils.evaluation.bm25.evaluate_bm25 import evaluate_bm25
+from temporal_embeddings.evaluation.utils.evaluation.sutime.evaluate_sutime import evaluate_sutime
 
 def evaluate_model(model_name: str, external_model_name: str, model_path: Path, batch_size: int, max_seq_len: int, benchmark: str, eval_id: int, top_k: int, metric: str, alpha: float = 0.5, use_all_paragraphs: bool = False) -> None:
     benchmark_file_path: Path = get_dataset_file_path(benchmark)
@@ -25,6 +26,9 @@ def evaluate_model(model_name: str, external_model_name: str, model_path: Path, 
 
     elif model_name == "bm25":
         evaluate_bm25(model_name, benchmark, benchmark_file_path, eval_id, top_k, metric)
+
+    elif model_name == "sutime":
+        evaluate_sutime(model_name, benchmark, benchmark_file_path, eval_id, top_k, metric, skip=False)
 
     else:
         evaluate_semantic_model(model_name, max_seq_len, benchmark, benchmark_file_path, eval_id, top_k, metric, use_all_paragraphs)
