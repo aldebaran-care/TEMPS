@@ -67,7 +67,7 @@ def evaluate_temporal_model(temporal_model_name: str, temporal_model_path: Path,
     print(f"Computing metrics with top_k={top_k}, metric={metric}")
     
     results: Dict[str, float]= compute_metrics(ground_truth, similarities_list, top_k, metric)
-    log_metrics_to_notion(id=str(eval_id), model=temporal_model_name, benchmark=benchmark, metrics=results, k=top_k)
+    log_metrics_to_notion(id=str(eval_id), model=temporal_model_name, benchmark=benchmark, metrics=results, k=top_k, num_negative_samples=num_negative_samples)
     
     print(results)
     print("Evaluation completed successfully")

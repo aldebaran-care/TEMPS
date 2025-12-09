@@ -22,5 +22,5 @@ def evaluate_model(model_name: str, external_model_name: str, model_path: Path, 
     # elif model_name == "sutime":
     #     evaluate_sutime(model_name, benchmark, benchmark_file_path, eval_id, top_k, metric, num_negative_samples)
 
-    # else:
-    #     evaluate_semantic_model(model_name, max_seq_len, benchmark, benchmark_file_path, eval_id, top_k, metric, num_negative_samples)
+    else:
+        evaluate_semantic_model(model_name, max_seq_len, benchmark, benchmark_file_path, eval_id, top_k, metric, num_negative_samples)

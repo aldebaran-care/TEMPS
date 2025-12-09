@@ -8,6 +8,8 @@ import pandas as pd
 from sentence_transformers import SentenceTransformer, util
 import torch
 
+from temporal_embeddings.evaluation.utils.data.random_paragraphs import add_negative_samples
+
 def encode(model: SentenceTransformer, texts: List[str], prompt_name: str = None) -> List[List[float]]:
     model_name = model._first_module().__class__.__name__.lower()
     
@@ -32,25 +34,23 @@ def batch_encode(model, texts_to_encode: List[str], batch_size: int = 128) -> Li
         encoded_embeddings.extend(model.encode(batch, show_progress_bar=False))
     return encoded_embeddings
 
-def compute_semantic_similarities(semantic_model_name: str, max_seq_len: int, benchmark_file_path: Path, semantic_cache_file_path: Path, semantic_similarities_file_path: Path, use_all_paragraphs: bool = True) -> pd.DataFrame:
+def compute_semantic_similarities(semantic_model_name: str, max_seq_len: int, benchmark_file_path: Path, semantic_cache_file_path: Path, semantic_similarities_file_path: Path, num_negative_samples: int = 0) -> pd.DataFrame:
     print("Starting semantic model embeddings computation...")
     print(f"Model: {semantic_model_name}")
 
     if semantic_model_name == "salesforce":
-        return compute_salesforce_similarities(benchmark_file_path, semantic_cache_file_path, semantic_similarities_file_path, use_all_paragraphs)
+        return compute_salesforce_similarities(benchmark_file_path, semantic_cache_file_path, semantic_similarities_file_path, num_negative_samples)
 
     print(f"Loading benchmark data from: {benchmark_file_path}")
     with benchmark_file_path.open("r", encoding="utf-8") as f:
-        benchmark_data = json.load(f)
+        benchmark_data = add_negative_samples(json.load(f), num_negative_samples=num_negative_samples)
         print(f"Loaded {len(benchmark_data)} benchmark items")
 
-        if use_all_paragraphs:
-            all_paragraphs: List[str] = []
-            for item in benchmark_data:
-                all_paragraphs.extend(item["paragraphs"])
+        all_paragraphs: List[str] = []
+        for item in benchmark_data:
+            all_paragraphs.extend(item["paragraphs"])
             
-            all_paragraphs = sorted(list(set(all_paragraphs)))
-            print(f"Using all paragraphs mode: {len(all_paragraphs)} unique paragraphs")
+        all_paragraphs = sorted(list(set(all_paragraphs)))
 
         print("Initializing embedding cache...")
         embedding_cache: pd.DataFrame = pd.DataFrame(columns=['embedding'])
@@ -82,7 +82,7 @@ def compute_semantic_similarities(semantic_model_name: str, max_seq_len: int, be
                     question_emb = encode(model, [question], prompt_name="question_prompt")[0]
                     embedding_cache.loc[question] = {'embedding': question_emb.cpu()}
 
-                paragraphs: List[str] = benchmark_item["paragraphs"] if not use_all_paragraphs else all_paragraphs
+                paragraphs: List[str] = benchmark_item["paragraphs"]
                 
                 for paragraph in paragraphs:
                     if paragraph not in embedding_cache.index:
@@ -128,7 +128,7 @@ def compute_semantic_similarities(semantic_model_name: str, max_seq_len: int, be
 
     return output_similarities_cache
 
-def compute_salesforce_similarities(benchmark_file_path: Path, semantic_cache_file_path: Path, semantic_similarities_file_path: Path, use_all_paragraphs: bool) -> pd.DataFrame:
+def compute_salesforce_similarities(benchmark_file_path: Path, semantic_cache_file_path: Path, semantic_similarities_file_path: Path, num_negative_samples: int) -> pd.DataFrame:
     model_name = "Salesforce/SFR-Embedding-Mistral"
     task = 'Given a question with temporal constraints, retrieve relevant passages that answer the question with the correct temporal information.'
     
@@ -141,16 +141,14 @@ def compute_salesforce_similarities(benchmark_file_path: Path, semantic_cache_fi
     
     print("Processing benchmark items with Salesforce model...")
     with benchmark_file_path.open("r", encoding="utf-8") as f:
-        benchmark_data = json.load(f)
+        benchmark_data = add_negative_samples(json.load(f), num_negative_samples=num_negative_samples)
         print(f"Loaded {len(benchmark_data)} benchmark items")
         
-        if use_all_paragraphs:
-            all_paragraphs: List[str] = []
-            for item in benchmark_data:
-                all_paragraphs.extend(item["paragraphs"])
-            
-            all_paragraphs = sorted(list(set(all_paragraphs)))
-            print(f"Using all paragraphs mode: {len(all_paragraphs)} unique paragraphs")
+        all_paragraphs: List[str] = []
+        for item in benchmark_data:
+            all_paragraphs.extend(item["paragraphs"])
+        
+        all_paragraphs = sorted(list(set(all_paragraphs)))
     
     def get_detailed_instruction(task_description: str, query: str) -> str:
         return f'Instruct: {task_description}\nQuery: {query}'
@@ -178,7 +176,7 @@ def compute_salesforce_similarities(benchmark_file_path: Path, semantic_cache_fi
                 questions_to_encode.append(question)
                 question_texts.append(get_detailed_instruction(task, question))
             
-            paragraphs: List[str] = benchmark_item["paragraphs"] if not use_all_paragraphs else all_paragraphs
+            paragraphs: List[str] = benchmark_item["paragraphs"]
             for paragraph in paragraphs:
                 if paragraph not in embedding_cache.index and paragraph not in paragraphs_to_encode:
                     paragraphs_to_encode.append(paragraph)

@@ -8,8 +8,9 @@ from temporal_embeddings.evaluation.utils.evaluation.semantic_model.compute_sema
 from temporal_embeddings.config.set_output_files import set_output_files
 from temporal_embeddings.evaluation.utils.evaluation.metrics import compute_metrics
 from temporal_embeddings.evaluation.utils.notion.notion import log_metrics_to_notion
+from temporal_embeddings.evaluation.utils.data.random_paragraphs import add_negative_samples
 
-def evaluate_semantic_model(semantic_model_name: str, max_seq_len: int, benchmark: str, benchmark_file_path: Path, eval_id: int, top_k: int, metric: str, use_all_paragraphs: bool = False) -> None:
+def evaluate_semantic_model(semantic_model_name: str, max_seq_len: int, benchmark: str, benchmark_file_path: Path, eval_id: int, top_k: int, metric: str, num_negative_samples: int = 0) -> None:
     print(f"Starting semantic model evaluation for model: {semantic_model_name}")
     print(f"Benchmark file: {benchmark_file_path}")
     
@@ -30,7 +31,7 @@ def evaluate_semantic_model(semantic_model_name: str, max_seq_len: int, benchmar
             benchmark_file_path=benchmark_file_path,
             semantic_cache_file_path=semantic_cache_path,
             semantic_similarities_file_path=semantic_similarities_path,
-            use_all_paragraphs=use_all_paragraphs
+            num_negative_samples=num_negative_samples
         )
     else:
         print("Skipping similarity computation - using existing results")
@@ -38,24 +39,31 @@ def evaluate_semantic_model(semantic_model_name: str, max_seq_len: int, benchmar
         print(f"Loading similarities from: {semantic_similarities_path}")
         semantic_similarities: pd.DataFrame = pd.read_pickle(semantic_similarities_path)
 
-    similarities_list: List[List[float]] = semantic_similarities.to_numpy().tolist()
-    
-    print(f"Loaded {len(semantic_similarities)} similarity lists")
-    
     print("Loading ground truth data...")
     ground_truth: List[List[int]] = []
 
     with open(benchmark_file_path, "r") as f:
-        benchmark_data: List[dict] = json.load(f)
+        benchmark_data: List[dict] = add_negative_samples(json.load(f), num_negative_samples=num_negative_samples)
 
         for e in benchmark_data:
             ground_truth.append(e["answer"])
     
     print(f"Loaded ground truth for {len(ground_truth)} items")
-    print(f"Computing metrics with top_k={top_k}, metric={metric}")
+    
+    print("Filtering similarities to only include candidate paragraphs...")
+    similarities_list: List[List[float]] = []
+    
+    for idx, benchmark_item in enumerate(benchmark_data):
+        candidate_paragraphs = benchmark_item["paragraphs"]
+        question_similarities = semantic_similarities.iloc[idx][candidate_paragraphs].tolist()
+        similarities_list.append(question_similarities)
+    
+    print(f"Filtered to {len(similarities_list)} similarity lists with candidate paragraphs only")
+    
+    print(f"Computing metrics with top_k={top_k}, metric={metric}, num_negative_samples={num_negative_samples}")
     
     results: Dict[str, float]= compute_metrics(ground_truth, similarities_list, top_k, metric)
-    log_metrics_to_notion(id=str(eval_id), model=semantic_model_name, benchmark=benchmark, metrics=results, k=top_k)
+    log_metrics_to_notion(id=str(eval_id), model=semantic_model_name, benchmark=benchmark, metrics=results, k=top_k, num_negative_samples=num_negative_samples)
     
     print(results)
     print("Evaluation completed successfully")

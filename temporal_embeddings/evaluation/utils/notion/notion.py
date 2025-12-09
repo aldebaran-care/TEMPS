@@ -26,7 +26,8 @@ def log_metrics_to_notion(
     command: str = None,
     comment: str = None,
     k: int = None,
-    alpha: float = None
+    alpha: float = None,
+    num_negative_samples: int = None
 ):
     properties = {
         "ID": {"title": [{"text": {"content": id}}]},
@@ -48,6 +49,9 @@ def log_metrics_to_notion(
 
     if alpha is not None:
         properties["Alpha"] = {"number": alpha}
+
+    if num_negative_samples is not None:
+        properties["Num Negative Samples"] = {"number": num_negative_samples}
 
     for key, value in metrics.items():
         properties[key] = {"number": value}
