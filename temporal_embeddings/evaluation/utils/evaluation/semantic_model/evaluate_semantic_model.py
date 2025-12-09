@@ -56,7 +56,7 @@ def evaluate_semantic_model(semantic_model_name: str, max_seq_len: int, benchmar
     
     results: Dict[str, float]= compute_metrics(ground_truth, similarities_list, top_k, metric)
 
-    log_metrics_to_notion(id=eval_id, model=semantic_model_name, benchmark=benchmark, metrics=results, k=top_k)
+    log_metrics_to_notion(id=str(eval_id), model=semantic_model_name, benchmark=benchmark, metrics=results, k=top_k)
     
     print()
     print("Evaluation completed successfully")
