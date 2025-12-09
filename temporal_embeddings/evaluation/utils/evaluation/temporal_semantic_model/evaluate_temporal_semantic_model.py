@@ -72,10 +72,10 @@ def evaluate_temporal_semantic_model(temporal_model_name: str, semantic_model_na
 
     print("Normalizing similarity scores...")
     temporal_similarities = normalize_list(temporal_similarities)
-    external_similarities = normalize_list(external_similarities)
+    semantic_similarities = normalize_list(semantic_similarities)
 
     print("Merging similarities with weights (temporal: 1x, external: 2x)...")
-    merged_list = [[((alpha*x) + ((1-alpha)*y)) for x, y in zip(sublist1, sublist2)] for sublist1, sublist2 in zip(temporal_similarities, external_similarities)]
+    merged_list = [[((alpha*x) + ((1-alpha)*y)) for x, y in zip(sublist1, sublist2)] for sublist1, sublist2 in zip(temporal_similarities, semantic_similarities)]
 
     merged_similarities: List[List[float]] = merged_list
     print("Score fusion completed")
