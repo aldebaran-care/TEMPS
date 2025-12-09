@@ -104,19 +104,23 @@ def compute_semantic_similarities(semantic_model_name: str, max_seq_len: int, be
 
             print("\n=== STAGE 2: Computing Similarities ===")
             
-            for benchmark_item in tqdm(benchmark_data):
-                question: str = benchmark_item["question"]
-                question_emb = embedding_cache.loc[question, 'embedding']
-
-                paragraphs: List[str] = benchmark_item["paragraphs"] if not use_all_paragraphs else all_paragraphs
-                similarities: List[float] = []
-                
-                for paragraph in paragraphs:
-                    paragraph_emb = embedding_cache.loc[paragraph, 'embedding']
-                    similarities.append(float(util.cos_sim(torch.Tensor(question_emb).cpu(), torch.Tensor(paragraph_emb).cpu())[0].item()))
-
-                row = {k: v for k, v in zip(all_paragraphs, similarities)}
-                output_similarities_cache.loc[question] = row
+            paragraph_embeddings = torch.stack([
+                torch.Tensor(embedding_cache.loc[paragraph, 'embedding']) 
+                for paragraph in all_paragraphs
+            ])
+            
+            def compute_question_similarities(question: str) -> pd.Series:
+                question_emb = torch.Tensor(embedding_cache.loc[question, 'embedding']).unsqueeze(0)
+                similarities = util.cos_sim(question_emb, paragraph_embeddings)[0]
+                return pd.Series(similarities.cpu().numpy(), index=all_paragraphs)
+            
+            questions = [item["question"] for item in benchmark_data]
+            
+            print("Computing similarities using vectorized operations...")
+            output_similarities_cache = pd.DataFrame([
+                compute_question_similarities(question) 
+                for question in tqdm(questions, desc="Computing similarities")
+            ], index=questions)
 
             print(f"Saving semantic model similarities to: {semantic_similarities_file_path}")
             output_similarities_cache.to_pickle(semantic_similarities_file_path)

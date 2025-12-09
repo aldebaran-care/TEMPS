@@ -11,8 +11,6 @@ def compute_temporal_similarities(temporal_model_name: str, temporal_model_path:
         print("Starting temporal model embeddings computation...")
         print(f"Using reference date: {reference_date}")
 
-        output_similarities_cache: pd.DataFrame = None
-
         print(f"Loading benchmark data from: {benchmark_file_path}")
         with benchmark_file_path.open("r", encoding="utf-8") as f:
             benchmark_data = json.load(f)
@@ -26,37 +24,44 @@ def compute_temporal_similarities(temporal_model_name: str, temporal_model_path:
                 all_paragraphs = sorted(list(set(all_paragraphs)))
                 print(f"Using all paragraphs mode: {len(all_paragraphs)} unique paragraphs")
 
-            print("Initializing TemporalBERT inference...")
-            if temporal_cache_file_path.exists():
-                print(f"Temporal cache file found at: {temporal_cache_file_path}")
+            output_similarities_cache: pd.DataFrame = pd.DataFrame(columns=all_paragraphs)
+
+            if temporal_similarities_file_path.exists():
+                print(f"Temporal similarities file found at: {temporal_similarities_file_path}")
+                output_similarities_cache = pd.read_pickle(temporal_similarities_file_path)
+                print(f"Loaded similarities cache with {len(output_similarities_cache)} entries")
             else:
-                print(f"No temporal cache file found - will create new cache")
-            
-            inference: Inference = Inference(model_name=temporal_model_name, model_path=temporal_model_path, batch_size=batch_size, max_seq_len=max_seq_len, temporal_cache_file_path=temporal_cache_file_path)
-            print("TemporalBERT inference initialized successfully")
-
-            print("Processing benchmark items with temporal model...")
-            output_similarities_cache = pd.DataFrame(columns=all_paragraphs)
-
-            for benchmark_item in tqdm(benchmark_data):
-                question: str = benchmark_item["question"]
-
-                paragraphs: List[str] = benchmark_item["paragraphs"] if not use_all_paragraphs else all_paragraphs
-                questions: List[str] = [question] * len(paragraphs)
-                reference_dates: List[str] = [reference_date] * len(paragraphs)
-                ground_truth: List[float] = [0.0] * len(paragraphs)
-
-                inference.set_sentences(questions, reference_dates, paragraphs, reference_dates, ground_truth)
-
-                output = inference.evaluate()
+                print(f"No temporal similarities file found - will create new similarities cache")
                 
-                row = {k: v for k, v in zip(all_paragraphs, output["similarity"])}
+                print("Initializing temporal model inference...")
+                if temporal_cache_file_path.exists():
+                    print(f"Temporal cache file found at: {temporal_cache_file_path}")
+                else:
+                    print(f"No temporal cache file found - will create new cache")
+                
+                inference: Inference = Inference(model_name=temporal_model_name, model_path=temporal_model_path, batch_size=batch_size, max_seq_len=max_seq_len, temporal_cache_file_path=temporal_cache_file_path)
+                print("Temporal model inference initialized successfully")
 
-                output_similarities_cache.loc[question] = row
+                print("Processing benchmark items with temporal model...")
 
-        print(f"Saving temporal model similarities to: {temporal_similarities_file_path}")
-        output_similarities_cache.to_pickle(temporal_similarities_file_path)
-        
-        print("Temporal model similarities saved successfully")
+                for benchmark_item in tqdm(benchmark_data):
+                    question: str = benchmark_item["question"]
+
+                    paragraphs: List[str] = benchmark_item["paragraphs"] if not use_all_paragraphs else all_paragraphs
+                    questions: List[str] = [question] * len(paragraphs)
+                    reference_dates: List[str] = [reference_date] * len(paragraphs)
+                    ground_truth: List[float] = [0.0] * len(paragraphs)
+
+                    inference.set_sentences(questions, reference_dates, paragraphs, reference_dates, ground_truth)
+
+                    output = inference.evaluate()
+                    
+                    row = {k: v for k, v in zip(all_paragraphs, output["similarity"])}
+
+                    output_similarities_cache.loc[question] = row
+
+                print(f"Saving temporal model similarities to: {temporal_similarities_file_path}")
+                output_similarities_cache.to_pickle(temporal_similarities_file_path)
+                print("Temporal model similarities saved successfully")
 
         return output_similarities_cache
