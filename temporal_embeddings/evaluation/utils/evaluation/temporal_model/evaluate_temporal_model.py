@@ -59,6 +59,7 @@ def evaluate_temporal_model(temporal_model_name: str, temporal_model_path: Path,
     
     for _, benchmark_item in enumerate(benchmark_data):
         candidate_paragraphs = benchmark_item["paragraphs"]
+        print(benchmark_item["question"])
         question_similarities = temporal_similarities.loc[benchmark_item["question"]][candidate_paragraphs].tolist()
         similarities_list.append(question_similarities)
     
