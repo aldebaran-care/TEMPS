@@ -2,22 +2,22 @@
     "output_paths": {
         "temporal_similarities_path": {
             "type": "string",
-            "default": "output/similarities/{benchmark_stem}/{model_name}/{model_stem}/{eval_id}_similarities.json",
+            "default": "output/similarities/{benchmark_stem}/{model_name}/{model_stem}/similarities.json",
             "description": "Path pattern for temporal model similarity output files."
         },
         "semantic_similarities_path": {
             "type": "string",
-            "default": "output/similarities/{benchmark_stem}/{external_model_name}/{eval_id}_similarities.json",
+            "default": "output/similarities/{benchmark_stem}/{external_model_name}/similarities.json",
             "description": "Path pattern for external model similarity output files."
         },
         "temporal_cache_path": {
             "type": "string",
-            "default": "output/cache/{benchmark_stem}/{model_name}/{model_stem}/{eval_id}_cache.pkl",
+            "default": "output/cache/{benchmark_stem}/{model_name}/{model_stem}/cache.pkl",
             "description": "Path pattern for temporal model embedding cache files."
         },
         "semantic_cache_path": {
             "type": "string",
-            "default": "output/cache/{benchmark_stem}/{external_model_name}/{eval_id}_cache.pkl",
+            "default": "output/cache/{benchmark_stem}/{external_model_name}/cache.pkl",
             "description": "Path pattern for external model embedding cache files."
         }
     }
