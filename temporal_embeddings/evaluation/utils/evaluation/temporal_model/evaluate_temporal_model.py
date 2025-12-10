@@ -64,7 +64,7 @@ def evaluate_temporal_model(temporal_model_name: str, temporal_model_path: Path,
 
         print(len(question_similarities_series), len(all_paragraphs))
 
-        assert "External links ." in question_similarities_series.index, "Expected paragraph missing from similarities index"
+        assert "External links ." in question_similarities_series.index, question_similarities_series
 
         question_similarities = []
         for paragraph in candidate_paragraphs:
