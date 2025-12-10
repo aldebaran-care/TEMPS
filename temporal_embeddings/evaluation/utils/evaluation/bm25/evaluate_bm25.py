@@ -19,7 +19,6 @@ def evaluate_bm25(bm25_model_name: str, benchmark: str, benchmark_file_path: Pat
         temporal_model_path=Path(""),
         semantic_model_name=bm25_model_name,
         benchmark=benchmark,
-        eval_id=eval_id
     ).values()
 
     if not bm25_similarities_path.exists():

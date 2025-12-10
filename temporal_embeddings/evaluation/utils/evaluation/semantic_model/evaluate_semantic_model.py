@@ -19,7 +19,6 @@ def evaluate_semantic_model(semantic_model_name: str, max_seq_len: int, benchmar
         temporal_model_path=Path(""),
         semantic_model_name=semantic_model_name,
         benchmark=benchmark,
-        eval_id=eval_id
     ).values()
 
     if not semantic_similarities_path.exists():

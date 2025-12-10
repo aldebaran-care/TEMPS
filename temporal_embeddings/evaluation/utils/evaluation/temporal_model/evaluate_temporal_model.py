@@ -20,7 +20,6 @@ def evaluate_temporal_model(temporal_model_name: str, temporal_model_path: Path,
         temporal_model_path=temporal_model_path,
         semantic_model_name="",
         benchmark=benchmark,
-        eval_id=eval_id
     ).values()
 
     if not temporal_similarities_path.exists():

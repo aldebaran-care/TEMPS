@@ -19,7 +19,6 @@ def evaluate_sutime(model_name: str, benchmark: str, benchmark_file_path: Path, 
         temporal_model_path=Path(""),
         semantic_model_name="",
         benchmark=benchmark,
-        eval_id=eval_id
     ).values()
 
     if not temporal_similarities_path.exists():
