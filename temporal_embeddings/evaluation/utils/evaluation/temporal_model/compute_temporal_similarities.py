@@ -93,7 +93,7 @@ def compute_temporal_similarities(temporal_model_name: str, temporal_model_path:
                     for paragraph in all_paragraphs
                 ])
                 
-                questions = [item["question"] for item in benchmark_data]
+                questions = list({item["question"] for item in benchmark_data})
                 
                 def compute_question_similarities(question: str) -> pd.Series:
                     question_mu = torch.FloatTensor(embedding_cache.loc[question, 'mu']).unsqueeze(0)
