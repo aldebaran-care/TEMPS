@@ -103,6 +103,8 @@ def compute_temporal_similarities(temporal_model_name: str, temporal_model_path:
                     paragraph_emb = type('GaussOutput', (), {'mu': paragraph_mu, 'std': paragraph_std})()
                     
                     similarities = inference.sim_fn(question_emb, paragraph_emb)
+                    assert len(similarities) == len(all_paragraphs)
+
                     return pd.Series([s.item() for s in similarities], index=all_paragraphs)
                 
                 print("Computing similarities using vectorized operations...")
