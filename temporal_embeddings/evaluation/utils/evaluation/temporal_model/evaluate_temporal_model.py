@@ -64,8 +64,8 @@ def evaluate_temporal_model(temporal_model_name: str, temporal_model_path: Path,
         for paragraph in candidate_paragraphs:
             if paragraph in question_similarities_series.index:
                 question_similarities.append(question_similarities_series[paragraph])
-                print(f"Paragraph found in similarities: {paragraph[:50]}...")
             else:
+                print(f"Paragraph not found in similarities: {paragraph[:50]}...")
                 question_similarities.append(float('-inf'))
         similarities_list.append(question_similarities)
     
