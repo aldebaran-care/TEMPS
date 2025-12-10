@@ -44,12 +44,14 @@ def evaluate_temporal_model(temporal_model_name: str, temporal_model_path: Path,
 
     print("Loading ground truth data...")
     ground_truth: List[List[int]] = []
+    all_paragraphs = set()
 
     with open(benchmark_file_path, "r") as f:
         benchmark_data: List[dict] = json.load(f)
 
         for e in benchmark_data:
             ground_truth.append(e["answer"])
+            all_paragraphs.update(e["paragraphs"])
     
     print(f"Loaded ground truth for {len(ground_truth)} items")
     
@@ -60,12 +62,13 @@ def evaluate_temporal_model(temporal_model_name: str, temporal_model_path: Path,
         candidate_paragraphs = benchmark_item["paragraphs"]
         question_similarities_series = temporal_similarities.loc[benchmark_item["question"]]
 
+        assert len(all_paragraphs) == len(question_similarities_series.index)
+
         question_similarities = []
         for paragraph in candidate_paragraphs:
             if paragraph in question_similarities_series.index:
                 question_similarities.append(question_similarities_series[paragraph])
             else:
-                print(f"Paragraph not found in similarities: {paragraph[:50]}...")
                 question_similarities.append(float('-inf'))
         similarities_list.append(question_similarities)
     
