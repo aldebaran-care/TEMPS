@@ -59,11 +59,15 @@ def evaluate_temporal_model(temporal_model_name: str, temporal_model_path: Path,
     
     for _, benchmark_item in enumerate(benchmark_data):
         candidate_paragraphs = benchmark_item["paragraphs"]
-        print("question: ")
-        print(benchmark_item["question"])
-        print("candidate_paragraphs: ")
-        print(candidate_paragraphs)
-        question_similarities = temporal_similarities.loc[benchmark_item["question"]][candidate_paragraphs].tolist()
+        question_similarities_series = temporal_similarities.loc[benchmark_item["question"]]
+
+        question_similarities = []
+        for paragraph in candidate_paragraphs:
+            if paragraph in question_similarities_series.index:
+                question_similarities.append(question_similarities_series[paragraph])
+            else:
+                print(f"Warning: Paragraph not found in similarities: {paragraph[:50]}...")
+                question_similarities.append(float('-inf'))
         similarities_list.append(question_similarities)
     
     print(f"Filtered to {len(similarities_list)} similarity lists with candidate paragraphs only")
