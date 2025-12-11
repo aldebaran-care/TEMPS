@@ -10,7 +10,7 @@ def main():
     parser.add_argument("--batch_size", type=int, default=32, help="Batch size for evaluation")
     parser.add_argument("--max_seq_len", type=int, default=128, help="Maximum sequence length for evaluation")
     parser.add_argument("--benchmark", type=str, default="", help="Benchmark to use for evaluation")
-    parser.add_argument("--eval_id", type=int, default=0, help="Evaluation ID to identify the experiment")
+    parser.add_argument("--eval_id", type=str, default="0", help="Evaluation ID to identify the experiment")
     parser.add_argument("--top_k", type=int, default=1, help="Value of k for top-k accuracy")
     parser.add_argument("--metric", type=str, default="top", choices=["all", "top", "mrr", "ndcg", "precision", "recall", "f1"], help="Metric to use for evaluation")
     parser.add_argument("--external_model_name", type=str, default="", help="Name of external model to integrate with temporal embeddings")

@@ -10,7 +10,7 @@ from temporal_embeddings.config.set_output_files import set_output_files
 from temporal_embeddings.evaluation.utils.notion.notion import log_metrics_to_notion
 from temporal_embeddings.evaluation.utils.data.random_paragraphs import add_negative_samples
 
-def evaluate_sutime(model_name: str, benchmark: str, benchmark_file_path: Path, eval_id: int, top_k: int, metric: str, num_negative_samples: int = 0) -> None:
+def evaluate_sutime(model_name: str, benchmark: str, benchmark_file_path: Path, eval_id: str, top_k: int, metric: str, num_negative_samples: int = 0) -> None:
     print(f"Starting SUTime evaluation with model: {model_name}")
     print(f"Benchmark file: {benchmark_file_path}")
     

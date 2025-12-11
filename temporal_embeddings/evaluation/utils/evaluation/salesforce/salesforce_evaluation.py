@@ -23,7 +23,7 @@ def encode_in_batches(model, texts_to_encode: List[str], batch_size: int = 128) 
         encoded_embeddings.extend(model.encode(batch, show_progress_bar=False))
     return encoded_embeddings
 
-def evaluate_salesforce(benchmark_file_path: Path, eval_id: int, top_k: int, metric: str, skip: bool) -> None:
+def evaluate_salesforce(benchmark_file_path: Path, eval_id: str, top_k: int, metric: str, skip: bool) -> None:
     model_name = "Salesforce/SFR-Embedding-Mistral"
     print(f"Starting Salesforce evaluation with model: {model_name}")
     print(f"Benchmark file: {benchmark_file_path}")
@@ -38,7 +38,6 @@ def evaluate_salesforce(benchmark_file_path: Path, eval_id: int, top_k: int, met
     print(f"Cache file path: {CACHE_FILE_PATH}")
     print(f"Created cache directory: {CACHE_FILE_PATH.parent}")
 
-    # Load embedding cache if exists
     embeddings_cache = pd.DataFrame(columns=["text", "embedding"]).set_index("text")
     if CACHE_FILE_PATH.exists():
         print(f"Cache file found at: {CACHE_FILE_PATH}")
@@ -110,7 +109,6 @@ def evaluate_salesforce(benchmark_file_path: Path, eval_id: int, top_k: int, met
 
                 output_similarities.append(similarities)
 
-        # Save embedding cache
         print(f"Saving embedding cache to: {CACHE_FILE_PATH}")
         embeddings_cache.to_pickle(CACHE_FILE_PATH)
         print(f"Cache saved with {len(embeddings_cache)} embeddings")

@@ -12,7 +12,7 @@ from temporal_embeddings.utils.math.normalize import normalize_list
 from temporal_embeddings.evaluation.utils.notion.notion import log_metrics_to_notion
 from temporal_embeddings.evaluation.utils.data.random_paragraphs import add_negative_samples
 
-def evaluate_temporal_semantic_model(temporal_model_name: str, semantic_model_name: str, temporal_model_path: Path, batch_size: int, max_seq_len: int, benchmark: str, benchmark_file_path: Path, eval_id: int, top_k: int, metric: str, alpha: float = 0.5, num_negative_samples: int = 0) -> None:
+def evaluate_temporal_semantic_model(temporal_model_name: str, semantic_model_name: str, temporal_model_path: Path, batch_size: int, max_seq_len: int, benchmark: str, benchmark_file_path: Path, eval_id: str, top_k: int, metric: str, alpha: float = 0.5, num_negative_samples: int = 0) -> None:
     print(f"Starting temporal semantic model evaluation")
     print(f"Temporal model: {temporal_model_name} at {temporal_model_path}")
     print(f"Semantic model: {semantic_model_name}")

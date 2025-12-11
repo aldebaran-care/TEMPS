@@ -7,7 +7,7 @@ from temporal_embeddings.evaluation.utils.evaluation.semantic_model.evaluate_sem
 from temporal_embeddings.evaluation.utils.evaluation.bm25.evaluate_bm25 import evaluate_bm25
 from temporal_embeddings.evaluation.utils.evaluation.sutime.evaluate_sutime import evaluate_sutime
 
-def evaluate_model(model_name: str, external_model_name: str, model_path: Path, batch_size: int, max_seq_len: int, benchmark: str, eval_id: int, top_k: int, metric: str, alpha: float, num_negative_samples: int = 0) -> None:
+def evaluate_model(model_name: str, external_model_name: str, model_path: Path, batch_size: int, max_seq_len: int, benchmark: str, eval_id: str, top_k: int, metric: str, alpha: float, num_negative_samples: int = 0) -> None:
     benchmark_file_path: Path = get_dataset_file_path(benchmark)
 
     if model_name in ["temporal_bert", "all-minilm-l6-v2"]:

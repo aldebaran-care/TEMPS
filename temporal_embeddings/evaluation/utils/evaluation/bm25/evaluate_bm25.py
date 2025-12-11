@@ -10,7 +10,7 @@ from temporal_embeddings.evaluation.utils.evaluation.metrics import compute_metr
 from temporal_embeddings.evaluation.utils.notion.notion import log_metrics_to_notion
 from temporal_embeddings.evaluation.utils.data.random_paragraphs import add_negative_samples
 
-def evaluate_bm25(bm25_model_name: str, benchmark: str, benchmark_file_path: Path, eval_id: int, top_k: int, metric: str, num_negative_samples: int = 0) -> None:
+def evaluate_bm25(bm25_model_name: str, benchmark: str, benchmark_file_path: Path, eval_id: str, top_k: int, metric: str, num_negative_samples: int = 0) -> None:
     print(f"Starting BM25 evaluation for model: {bm25_model_name}")
     print(f"Benchmark file: {benchmark_file_path}")
     
