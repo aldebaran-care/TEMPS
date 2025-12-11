@@ -17,22 +17,16 @@ for alpha in "${ALPHA_VALUES[@]}"; do
     echo "### ALPHA = $alpha ###"
     echo "##########################################"
     
-    for top_k in "${TOP_K_VALUES[@]}"; do
-        echo "=========================================="
-        echo "=== TOP_K = $top_k ==="
-        echo "=========================================="
+    for benchmark in "${BENCHMARKS[@]}"; do
+        echo ""
+        echo "=== BENCHMARK: $benchmark ==="
         
-        for benchmark in "${BENCHMARKS[@]}"; do
-            echo ""
-            echo "=== BENCHMARK: $benchmark ==="
+        for num_neg in "${NUM_NEGATIVE_SAMPLES[@]}"; do
+            echo "Num Negative Samples: $num_neg"
             
-            for num_neg in "${NUM_NEGATIVE_SAMPLES[@]}"; do
-                echo "Num Negative Samples: $num_neg"
-                
-                for external_model in "${EXTERNAL_MODELS[@]}"; do
-                    echo "External Model: $external_model"
-                    python3 evaluate.py --model_name=all-minilm-l6-v2-full --external_model_name=$external_model --model_path=output/trained_models/model_sentence-transformers_all-MiniLM-L6-v2_2025-07-25_23-47-04.pth --batch_size=128 --max_seq_len=512 --benchmark=$benchmark --eval_id="test full model wiht k=10" --top_k=10 --metric=all --alpha=$alpha --num_negative_samples=$num_neg | grep "^{'top':"
-                done
+            for external_model in "${EXTERNAL_MODELS[@]}"; do
+                echo "External Model: $external_model"
+                python3 evaluate.py --model_name=all-minilm-l6-v2-full --external_model_name=$external_model --model_path=output/trained_models/model_sentence-transformers_all-MiniLM-L6-v2_2025-07-25_23-47-04.pth --batch_size=128 --max_seq_len=512 --benchmark=$benchmark --eval_id="test full model wiht k=10" --top_k=10 --metric=all --alpha=$alpha --num_negative_samples=$num_neg | grep "^{'top':"
             done
         done
     done
