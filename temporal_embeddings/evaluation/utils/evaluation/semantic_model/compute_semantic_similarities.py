@@ -114,7 +114,7 @@ def compute_semantic_similarities(semantic_model_name: str, max_seq_len: int, be
                 similarities = util.cos_sim(question_emb, paragraph_embeddings)[0]
                 return pd.Series(similarities.cpu().numpy(), index=all_paragraphs)
             
-            questions = [item["question"] for item in benchmark_data]
+            questions = list({item["question"] for item in benchmark_data})
             
             print("Computing similarities using vectorized operations...")
             output_similarities_cache = pd.DataFrame([
@@ -219,7 +219,7 @@ def compute_salesforce_similarities(benchmark_file_path: Path, semantic_cache_fi
             similarities = util.cos_sim(question_emb, paragraph_embeddings)[0]
             return pd.Series(similarities.cpu().numpy(), index=all_paragraphs)
         
-        questions = [item["question"] for item in benchmark_data]
+        questions = list({item["question"] for item in benchmark_data})
         
         print("Computing similarities using vectorized operations...")
         output_similarities_cache = pd.DataFrame([

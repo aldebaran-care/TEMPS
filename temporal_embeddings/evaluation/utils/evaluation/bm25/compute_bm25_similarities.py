@@ -81,7 +81,7 @@ def compute_bm25_similarities(bm25_model_name: str, benchmark_file_path: Path, b
                 scores = bm25.get_scores(question_tokens)
                 return pd.Series(scores, index=all_paragraphs)
             
-            questions = [item["question"] for item in benchmark_data]
+            questions = list({item["question"] for item in benchmark_data})
             
             print("Computing BM25 scores...")
             output_similarities_cache = pd.DataFrame([

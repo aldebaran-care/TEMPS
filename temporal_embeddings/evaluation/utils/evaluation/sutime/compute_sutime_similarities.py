@@ -113,7 +113,7 @@ def compute_sutime_similarities(benchmark_file_path: Path, cache_file_path: Path
             
             return pd.Series(similarities, index=all_paragraphs)
         
-        questions = [item["question"] for item in benchmark_data]
+        questions = list({item["question"] for item in benchmark_data})
         
         print("Computing similarities using vectorized operations...")
         output_similarities_cache = pd.DataFrame([
