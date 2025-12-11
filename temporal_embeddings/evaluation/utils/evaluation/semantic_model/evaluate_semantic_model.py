@@ -52,9 +52,8 @@ def evaluate_semantic_model(semantic_model_name: str, max_seq_len: int, benchmar
     print("Filtering similarities to only include candidate paragraphs...")
     similarities_list: List[List[float]] = []
     
-    for idx, benchmark_item in enumerate(benchmark_data):
-        candidate_paragraphs = benchmark_item["paragraphs"]
-        question_similarities = semantic_similarities.iloc[idx][candidate_paragraphs].tolist()
+    for _, benchmark_item in enumerate(benchmark_data):
+        question_similarities = semantic_similarities.loc[benchmark_item["question"]][benchmark_item["paragraphs"]].tolist()
         similarities_list.append(question_similarities)
     
     print(f"Filtered to {len(similarities_list)} similarity lists with candidate paragraphs only")
@@ -62,7 +61,7 @@ def evaluate_semantic_model(semantic_model_name: str, max_seq_len: int, benchmar
     print(f"Computing metrics with top_k={top_k}, metric={metric}, num_negative_samples={num_negative_samples}")
     
     results: Dict[str, float]= compute_metrics(ground_truth, similarities_list, top_k, metric)
-    log_metrics_to_notion(id=str(eval_id), model=semantic_model_name, benchmark=benchmark, metrics=results, k=top_k, num_negative_samples=num_negative_samples)
+    log_metrics_to_notion(id=eval_id, model=semantic_model_name, benchmark=benchmark, metrics=results, k=top_k, num_negative_samples=num_negative_samples)
     
     print(results)
     print("Evaluation completed successfully")

@@ -50,9 +50,8 @@ def evaluate_bm25(bm25_model_name: str, benchmark: str, benchmark_file_path: Pat
     print("Filtering similarities to only include candidate paragraphs...")
     similarities_list: List[List[float]] = []
     
-    for idx, benchmark_item in enumerate(benchmark_data):
-        candidate_paragraphs = benchmark_item["paragraphs"]
-        question_similarities = bm25_similarities.iloc[idx][candidate_paragraphs].tolist()
+    for _, benchmark_item in enumerate(benchmark_data):
+        question_similarities = bm25_similarities.loc[benchmark_item["question"]][benchmark_item["paragraphs"]].tolist()
         similarities_list.append(question_similarities)
     
     print(f"Filtered to {len(similarities_list)} similarity lists with candidate paragraphs only")
@@ -60,7 +59,7 @@ def evaluate_bm25(bm25_model_name: str, benchmark: str, benchmark_file_path: Pat
     print(f"Computing metrics with top_k={top_k}, metric={metric}")
     
     results: Dict[str, float] = compute_metrics(ground_truth, similarities_list, top_k, metric)
-    log_metrics_to_notion(id=str(eval_id), model=bm25_model_name, benchmark=benchmark, metrics=results, k=top_k, num_negative_samples=num_negative_samples)
+    log_metrics_to_notion(id=eval_id, model=bm25_model_name, benchmark=benchmark, metrics=results, k=top_k, num_negative_samples=num_negative_samples)
     
     print(results)
     print("Evaluation completed successfully")

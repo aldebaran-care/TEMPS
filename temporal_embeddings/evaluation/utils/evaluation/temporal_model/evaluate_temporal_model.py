@@ -59,19 +59,7 @@ def evaluate_temporal_model(temporal_model_name: str, temporal_model_path: Path,
     similarities_list: List[List[float]] = []
     
     for _, benchmark_item in enumerate(benchmark_data):
-        candidate_paragraphs = benchmark_item["paragraphs"]
-        question_similarities_series = temporal_similarities.loc[benchmark_item["question"]]
-
-        print(len(question_similarities_series), len(all_paragraphs))
-
-        assert "External links ." in question_similarities_series.index, benchmark_item["question"]
-
-        question_similarities = []
-        for paragraph in candidate_paragraphs:
-            if paragraph in question_similarities_series.index:
-                question_similarities.append(question_similarities_series[paragraph])
-            else:
-                question_similarities.append(float('-inf'))
+        question_similarities = temporal_similarities.loc[benchmark_item["question"]][benchmark_item["paragraphs"]].tolist
         similarities_list.append(question_similarities)
     
     print(f"Filtered to {len(similarities_list)} similarity lists with candidate paragraphs only")

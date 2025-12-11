@@ -43,7 +43,7 @@ def evaluate_temporal_semantic_model(temporal_model_name: str, semantic_model_na
         print("Skipping model runs - using existing temporal similarities")
 
         print("Loading temporal similarities for fusion...")
-        temporal_similarities: pd.DataFrame = pd.read_pickle(temporal_similarities_path).to_numpy().tolist()
+        temporal_similarities: pd.DataFrame = pd.read_pickle(temporal_similarities_path)
 
     print(f"Loaded {len(temporal_similarities)} temporal similarity lists")
 
@@ -63,21 +63,9 @@ def evaluate_temporal_semantic_model(temporal_model_name: str, semantic_model_na
         print("Skipping model runs - using existing semantic similarities")
 
         print("Loading semantic similarities for fusion...")
-        semantic_similarities: pd.DataFrame = pd.read_pickle(semantic_similarities_path).to_numpy().tolist()
+        semantic_similarities: pd.DataFrame = pd.read_pickle(semantic_similarities_path)
     
     print(f"Loaded {len(semantic_similarities)} semantic similarity lists")
-
-    print("Using score normalization and weighted fusion...")
-
-    print("Normalizing similarity scores...")
-    temporal_similarities = normalize_list(temporal_similarities)
-    semantic_similarities = normalize_list(semantic_similarities)
-
-    print("Merging similarities with weights (temporal: 1x, external: 2x)...")
-    merged_list = [[((alpha*x) + ((1-alpha)*y)) for x, y in zip(sublist1, sublist2)] for sublist1, sublist2 in zip(temporal_similarities, semantic_similarities)]
-
-    merged_similarities: List[List[float]] = merged_list
-    print("Score fusion completed")
     
     print("Loading ground truth for score evaluation...")
     ground_truth: List[List[int]] = []
@@ -89,22 +77,22 @@ def evaluate_temporal_semantic_model(temporal_model_name: str, semantic_model_na
             ground_truth.append(e["answer"])
 
     print(f"Loaded ground truth for {len(ground_truth)} items")
+
+    merged_similarities: pd.DataFrame = (alpha * temporal_similarities) + ((1 - alpha) * semantic_similarities)
     
     print("Filtering merged similarities to only include candidate paragraphs...")
     filtered_similarities: List[List[float]] = []
     
-    for idx, benchmark_item in enumerate(benchmark_data):
-        candidate_paragraphs = benchmark_item["paragraphs"]
-
-        question_merged_similarities = [merged_similarities[idx][i] for i in range(len(candidate_paragraphs))]
-        filtered_similarities.append(question_merged_similarities)
+    for _, benchmark_item in enumerate(benchmark_data):
+        question_similarities = merged_similarities.loc[benchmark_item["question"]][benchmark_item["paragraphs"]].tolist()
+        filtered_similarities.append(question_similarities)
     
     print(f"Filtered to {len(filtered_similarities)} similarity lists with candidate paragraphs only")
 
     print(f"Computing score metrics with top_k={top_k}, metric={metric}")
 
     results: Dict[str, float]= compute_metrics(ground_truth, filtered_similarities, top_k, metric)
-    log_metrics_to_notion(id=str(eval_id), model=temporal_model_name, external_model=semantic_model_name, benchmark=benchmark, metrics=results, k=top_k, alpha=alpha, num_negative_samples=num_negative_samples)
+    log_metrics_to_notion(id=eval_id, model=temporal_model_name, external_model=semantic_model_name, benchmark=benchmark, metrics=results, k=top_k, alpha=alpha, num_negative_samples=num_negative_samples)
 
     print(results)
     print("Temporal semantic model evaluation completed successfully")
