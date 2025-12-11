@@ -47,7 +47,7 @@ def evaluate_temporal_model(temporal_model_name: str, temporal_model_path: Path,
     all_paragraphs = set()
 
     with open(benchmark_file_path, "r") as f:
-        benchmark_data: List[dict] = json.load(f)
+        benchmark_data: List[dict] = add_negative_samples(json.load(f), num_negative_samples=num_negative_samples)
 
         for e in benchmark_data:
             ground_truth.append(e["answer"])

@@ -5,19 +5,20 @@ from typing import List
 from tqdm import tqdm
 import pandas as pd
 from rank_bm25 import BM25Okapi
-import numpy as np
+
+from temporal_embeddings.evaluation.utils.data.random_paragraphs import add_negative_samples
 
 def tokenize(text: str) -> List[str]:
     """Simple tokenization by splitting on whitespace and converting to lowercase."""
     return text.lower().split()
 
-def compute_bm25_similarities(bm25_model_name: str, benchmark_file_path: Path, bm25_cache_file_path: Path, bm25_similarities_file_path: Path) -> pd.DataFrame:
+def compute_bm25_similarities(bm25_model_name: str, benchmark_file_path: Path, bm25_cache_file_path: Path, bm25_similarities_file_path: Path, num_negative_samples: int) -> pd.DataFrame:
     print("Starting BM25 similarities computation...")
     print(f"Model: {bm25_model_name}")
 
     print(f"Loading benchmark data from: {benchmark_file_path}")
     with benchmark_file_path.open("r", encoding="utf-8") as f:
-        benchmark_data = json.load(f)
+        benchmark_data = add_negative_samples(json.load(f), num_negative_samples=num_negative_samples)
         print(f"Loaded {len(benchmark_data)} benchmark items")
 
         all_paragraphs: List[str] = []

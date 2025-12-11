@@ -7,6 +7,7 @@ from tqdm import tqdm
 import pandas as pd
 
 from temporal_embeddings.data_utils.utils.compute_similarity_expressions import compute_similarity_expressions
+from temporal_embeddings.evaluation.utils.data.random_paragraphs import add_negative_samples
 
 def extract_temporal_expressions(client: CoreNLPClient, text: str) -> List[Tuple[str, str]]:
     temporal_expressions = []
@@ -20,12 +21,12 @@ def extract_temporal_expressions(client: CoreNLPClient, text: str) -> List[Tuple
                     temporal_expressions.append((expr_text, expr_value))
     return temporal_expressions
 
-def compute_sutime_similarities(benchmark_file_path: Path, cache_file_path: Path, similarities_file_path: Path) -> pd.DataFrame:
+def compute_sutime_similarities(benchmark_file_path: Path, cache_file_path: Path, similarities_file_path: Path, num_negative_samples: int) -> pd.DataFrame:
     print("Starting SUTime similarity computation...")
     
     print(f"Loading benchmark data from: {benchmark_file_path}")
     with benchmark_file_path.open("r", encoding="utf-8") as f:
-        benchmark_data: List[Dict] = json.load(f)
+        benchmark_data: List[Dict] = add_negative_samples(json.load(f), num_negative_samples=num_negative_samples)
         print(f"Loaded {len(benchmark_data)} benchmark items")
 
     all_paragraphs: List[str] = []
