@@ -8,9 +8,27 @@ cd /mnt/beegfs/home/hassani/training_an_em/project/temporal-embeddings
 conda activate train-env
 
 BENCHMARKS=("time_sensitive_qa" "ts_retriever" "temp_reason_l1")
-EXTERNAL_MODELS=("intfloat/e5-base-v2")
+EXTERNAL_MODELS=("all-mpnet-base-v2" "BAAI/bge-large-en-v1.5" "salesforce" "intfloat/e5-base-v2")
 NUM_NEGATIVE_SAMPLES=(-1 0 10 100)
 ALPHA_VALUES=(0.25 0.5 0.75)
+
+echo "##########################################"
+echo "### EXTERNAL MODELS ONLY (no alpha) ###"
+echo "##########################################"
+
+for benchmark in "${BENCHMARKS[@]}"; do
+    echo ""
+    echo "=== BENCHMARK: $benchmark ==="
+    
+    for num_neg in "${NUM_NEGATIVE_SAMPLES[@]}"; do
+        echo "Num Negative Samples: $num_neg"
+        
+        for external_model in "${EXTERNAL_MODELS[@]}"; do
+            echo "External Model: $external_model"
+            python3 evaluate.py --model_name=$external_model --benchmark=$benchmark --eval_id="all baselines" --top_k=10 --metric=all --num_negative_samples=$num_neg | grep "^{'top':"
+        done
+    done
+done
 
 for alpha in "${ALPHA_VALUES[@]}"; do
     echo "##########################################"
@@ -25,8 +43,8 @@ for alpha in "${ALPHA_VALUES[@]}"; do
             echo "Num Negative Samples: $num_neg"
             
             for external_model in "${EXTERNAL_MODELS[@]}"; do
-                echo "External Model: $external_model"
-                python3 evaluate.py --model_name=all-minilm-l6-v2-full --external_model_name=$external_model --model_path=output/trained_models/model_sentence-transformers_all-MiniLM-L6-v2_2025-07-25_23-47-04.pth --batch_size=128 --max_seq_len=512 --benchmark=$benchmark --eval_id="test full model wiht k=10" --top_k=10 --metric=all --alpha=$alpha --num_negative_samples=$num_neg | grep "^{'top':"
+                echo "External Model: $external_model (with alpha)"
+                python3 evaluate.py --model_name=all-minilm-l6-v2-full --external_model_name=$external_model --model_path=output/trained_models/model_sentence-transformers_all-MiniLM-L6-v2_2025-07-25_23-47-04.pth --batch_size=128 --max_seq_len=512 --benchmark=$benchmark --eval_id="all baselines" --top_k=10 --metric=all --alpha=$alpha --num_negative_samples=$num_neg | grep "^{'top':"
             done
         done
     done
