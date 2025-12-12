@@ -1,12 +1,31 @@
 import random
+import json
+import hashlib
+from pathlib import Path
 from typing import List, Dict, Any
 
 
 def add_negative_samples(
     data: List[Dict[str, Any]],
-    num_negative_samples: int = 5,
-    seed: int = 42
+    num_negative_samples: int,
+    seed: int = 42,
 ) -> List[Dict[str, Any]]:
+    cache_path = Path("output/cache/negative_samples")
+    cache_path.mkdir(parents=True, exist_ok=True)
+    
+    data_str = json.dumps(data, sort_keys=True)
+    data_hash = hashlib.md5(data_str.encode()).hexdigest()[:8]
+    
+    cache_file = cache_path / f"negative_samples_n{num_negative_samples}_seed{seed}_{data_hash}.json"
+    
+    if cache_file.exists():
+        try:
+            with open(cache_file, 'r') as f:
+                cached_result = json.load(f)
+                return cached_result
+        except (json.JSONDecodeError, IOError):
+            pass
+    
     random.seed(seed)
     
     all_paragraphs = set()
@@ -55,5 +74,11 @@ def add_negative_samples(
         }
         
         result.append(new_item)
+    
+    try:
+        with open(cache_file, 'w') as f:
+            json.dump(result, f, indent=2)
+    except IOError:
+        pass
     
     return result
