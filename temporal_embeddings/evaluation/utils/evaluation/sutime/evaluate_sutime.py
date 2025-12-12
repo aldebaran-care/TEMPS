@@ -10,7 +10,7 @@ from temporal_embeddings.config.set_output_files import set_output_files
 from temporal_embeddings.evaluation.utils.notion.notion import log_metrics_to_notion
 from temporal_embeddings.evaluation.utils.data.random_paragraphs import add_negative_samples
 
-def evaluate_sutime(model_name: str, benchmark: str, benchmark_file_path: Path, eval_id: str, top_k: int, metric: str, num_negative_samples: int = 0) -> None:
+def evaluate_sutime(model_name: str, benchmark: str, benchmark_file_path: Path, eval_id: str, top_k: int, metric: str, num_negative_samples: int) -> None:
     print(f"Starting SUTime evaluation with model: {model_name}")
     print(f"Benchmark file: {benchmark_file_path}")
     
@@ -27,7 +27,8 @@ def evaluate_sutime(model_name: str, benchmark: str, benchmark_file_path: Path, 
         sutime_similarities = compute_sutime_similarities(
             benchmark_file_path=benchmark_file_path,
             cache_file_path=temporal_cache_path,
-            similarities_file_path=temporal_similarities_path
+            similarities_file_path=temporal_similarities_path,
+            num_negative_samples=num_negative_samples
         )
     else:
         print("Skipping similarity computation - using existing results")

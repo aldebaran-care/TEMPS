@@ -10,7 +10,7 @@ from temporal_embeddings.evaluation.utils.evaluation.metrics import compute_metr
 from temporal_embeddings.evaluation.utils.notion.notion import log_metrics_to_notion
 from temporal_embeddings.evaluation.utils.data.random_paragraphs import add_negative_samples
 
-def evaluate_bm25(bm25_model_name: str, benchmark: str, benchmark_file_path: Path, eval_id: str, top_k: int, metric: str, num_negative_samples: int = 0) -> None:
+def evaluate_bm25(bm25_model_name: str, benchmark: str, benchmark_file_path: Path, eval_id: str, top_k: int, metric: str, num_negative_samples: int) -> None:
     print(f"Starting BM25 evaluation for model: {bm25_model_name}")
     print(f"Benchmark file: {benchmark_file_path}")
     
@@ -28,7 +28,8 @@ def evaluate_bm25(bm25_model_name: str, benchmark: str, benchmark_file_path: Pat
             bm25_model_name=bm25_model_name,
             benchmark_file_path=benchmark_file_path,
             bm25_cache_file_path=bm25_cache_path,
-            bm25_similarities_file_path=bm25_similarities_path
+            bm25_similarities_file_path=bm25_similarities_path,
+            num_negative_samples=num_negative_samples
         )
     else:
         print("Skipping BM25 similarity computation - using existing results")
