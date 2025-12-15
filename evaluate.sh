@@ -9,8 +9,9 @@ conda activate train-env
 
 BENCHMARKS=("time_sensitive_qa" "ts_retriever" "temp_reason_l1")
 EXTERNAL_MODELS=("all-mpnet-base-v2" "BAAI/bge-large-en-v1.5" "salesforce" "intfloat/e5-base-v2")
-NUM_NEGATIVE_SAMPLES=(0 5 10 20 30 40 50 100)
+NUM_NEGATIVE_SAMPLES=(100 50 40 30 20 10 5 0)
 ALPHA_VALUES=(0.1 0.25 0.5 0.75 0.9)
+eval_id="hard negatives 10"
 
 echo "##########################################"
 echo "### EXTERNAL MODELS ONLY (no alpha) ###"
@@ -25,7 +26,7 @@ for benchmark in "${BENCHMARKS[@]}"; do
         
         for external_model in "${EXTERNAL_MODELS[@]}"; do
             echo "External Model: $external_model"
-            python3 evaluate.py --model_name=$external_model --benchmark=$benchmark --eval_id="hard negatives 3" --top_k=5 --metric=all --num_negative_samples=$num_neg
+            python3 evaluate.py --model_name=$external_model --benchmark=$benchmark --eval_id="$eval_id" --top_k=5 --metric=all --num_negative_samples=$num_neg
         done
     done
 done
@@ -44,7 +45,7 @@ for alpha in "${ALPHA_VALUES[@]}"; do
             
             for external_model in "${EXTERNAL_MODELS[@]}"; do
                 echo "External Model: $external_model (with alpha)"
-                python3 evaluate.py --model_name=all-minilm-l6-v2-full --external_model_name=$external_model --model_path=output/trained_models/model_sentence-transformers_all-MiniLM-L6-v2_2025-07-25_23-47-04.pth --batch_size=128 --max_seq_len=512 --benchmark=$benchmark --eval_id="hard negatives 3" --top_k=5 --metric=all --alpha=$alpha --num_negative_samples=$num_neg
+                python3 evaluate.py --model_name=all-minilm-l6-v2-full --external_model_name=$external_model --model_path=output/trained_models/model_sentence-transformers_all-MiniLM-L6-v2_2025-07-25_23-47-04.pth --batch_size=128 --max_seq_len=512 --benchmark=$benchmark --eval_id="$eval_id" --top_k=5 --metric=all --alpha=$alpha --num_negative_samples=$num_neg
             done
         done
     done
