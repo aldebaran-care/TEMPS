@@ -58,11 +58,12 @@ def add_negative_samples(
     all_paragraphs_list = list(all_paragraphs)
     
     print("Extracting temporal expressions for similarity-based sampling...")
-    temporal_cache_path = cache_path / f"temporal_expressions_{data_hash}.pkl"
+    temporal_cache_path = cache_path / f"temporal_expressions_{data_hash}.json"
     
-    temporal_cache = pd.DataFrame(columns=["expressions"])
+    temporal_cache = {}
     if temporal_cache_path.exists():
-        temporal_cache = pd.read_pickle(temporal_cache_path)
+        with open(temporal_cache_path, 'r') as f:
+            temporal_cache = json.load(f)
     else:
         unique_texts = set()
         for item in data:
@@ -72,26 +73,28 @@ def add_negative_samples(
         client = CoreNLPClient(annotators=['tokenize', 'ner'], be_quiet=True)
         for text in tqdm(list(unique_texts), desc="Extracting temporal expressions"):
             expressions = extract_temporal_expressions(client, text)
-            temporal_cache.loc[text] = {'expressions': expressions}
+            temporal_cache[text] = expressions
         
-        temporal_cache.to_pickle(temporal_cache_path)
+        with open(temporal_cache_path, 'w') as f:
+            json.dump(temporal_cache, f, indent=2)
     
     print("Computing similarity cache...")
-    similarity_cache_path = cache_path / f"similarities_{data_hash}.pkl"
+    similarity_cache_path = cache_path / f"similarities_{data_hash}.json"
     
-    similarity_cache = pd.DataFrame(columns=all_paragraphs_list)
+    similarity_cache = {}
     if similarity_cache_path.exists():
-        similarity_cache = pd.read_pickle(similarity_cache_path)
+        with open(similarity_cache_path, 'r') as f:
+            similarity_cache = json.load(f)
     else:
         current_date = '2025-11-13'
         questions = list({item['question'] for item in data})
         
-        def compute_question_similarities(question: str) -> pd.Series:
-            question_expressions = temporal_cache.loc[question, "expressions"]
-            similarities = []
+        def compute_question_similarities(question: str) -> Dict[str, float]:
+            question_expressions = temporal_cache.get(question, [])
+            similarities = {}
             
             for paragraph in all_paragraphs_list:
-                paragraph_expressions = temporal_cache.loc[paragraph, "expressions"]
+                paragraph_expressions = temporal_cache.get(paragraph, [])
                 max_similarity = 0.0
                 
                 if question_expressions and paragraph_expressions:
@@ -105,16 +108,15 @@ def add_negative_samples(
                             )
                             max_similarity = max(max_similarity, similarity)
                 
-                similarities.append(max_similarity)
+                similarities[paragraph] = max_similarity
             
-            return pd.Series(similarities, index=all_paragraphs_list)
+            return similarities
         
-        similarity_cache = pd.DataFrame([
-            compute_question_similarities(question) 
-            for question in tqdm(questions, desc="Computing similarities")
-        ], index=questions)
+        for question in tqdm(questions, desc="Computing similarities"):
+            similarity_cache[question] = compute_question_similarities(question)
         
-        similarity_cache.to_pickle(similarity_cache_path)
+        with open(similarity_cache_path, 'w') as f:
+            json.dump(similarity_cache, f, indent=2)
     
     result = []
     
@@ -134,9 +136,9 @@ def add_negative_samples(
             num_to_sample = min(num_negative_samples, len(available_negatives))
             
             question = item['question']
-            question_similarities = similarity_cache.loc[question]
+            question_similarities = similarity_cache.get(question, {})
             
-            similarities = [(para, question_similarities[para]) for para in available_negatives]
+            similarities = [(para, question_similarities.get(para, 0.0)) for para in available_negatives]
             similarities.sort(key=lambda x: x[1], reverse=True)
             negative_samples = [para for para, _ in similarities[:num_to_sample]]
         
