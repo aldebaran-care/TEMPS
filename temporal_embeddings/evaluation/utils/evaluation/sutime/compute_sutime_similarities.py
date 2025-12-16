@@ -26,7 +26,7 @@ def compute_sutime_similarities(benchmark_file_path: Path, cache_file_path: Path
     
     print(f"Loading benchmark data from: {benchmark_file_path}")
     with benchmark_file_path.open("r", encoding="utf-8") as f:
-        benchmark_data: List[Dict] = add_negative_samples(json.load(f), num_negative_samples=num_negative_samples)
+        benchmark_data: List[Dict] = add_negative_samples(json.load(f))
         print(f"Loaded {len(benchmark_data)} benchmark items")
 
     all_paragraphs: List[str] = []

@@ -43,7 +43,7 @@ def compute_semantic_similarities(semantic_model_name: str, max_seq_len: int, be
 
     print(f"Loading benchmark data from: {benchmark_file_path}")
     with benchmark_file_path.open("r", encoding="utf-8") as f:
-        benchmark_data = add_negative_samples(json.load(f), num_negative_samples=num_negative_samples)
+        benchmark_data = add_negative_samples(json.load(f))
         print(f"Loaded {len(benchmark_data)} benchmark items")
 
         all_paragraphs: List[str] = []
@@ -141,7 +141,7 @@ def compute_salesforce_similarities(benchmark_file_path: Path, semantic_cache_fi
     
     print("Processing benchmark items with Salesforce model...")
     with benchmark_file_path.open("r", encoding="utf-8") as f:
-        benchmark_data = add_negative_samples(json.load(f), num_negative_samples=num_negative_samples)
+        benchmark_data = add_negative_samples(json.load(f))
         print(f"Loaded {len(benchmark_data)} benchmark items")
         
         all_paragraphs: List[str] = []

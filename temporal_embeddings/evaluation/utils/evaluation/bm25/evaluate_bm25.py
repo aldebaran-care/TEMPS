@@ -41,7 +41,7 @@ def evaluate_bm25(bm25_model_name: str, benchmark: str, benchmark_file_path: Pat
     ground_truth: List[List[int]] = []
 
     with open(benchmark_file_path, "r") as f:
-        benchmark_data: List[dict] = add_negative_samples(json.load(f), num_negative_samples=num_negative_samples)
+        benchmark_data: List[dict] = add_negative_samples(json.load(f))
 
         for e in benchmark_data:
             ground_truth.append(e["answer"])
