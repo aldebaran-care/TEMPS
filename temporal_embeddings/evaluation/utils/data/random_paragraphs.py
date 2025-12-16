@@ -4,7 +4,6 @@ import hashlib
 from pathlib import Path
 from typing import List, Dict, Any, Tuple
 
-import pandas as pd
 from stanza.server import CoreNLPClient
 from tqdm import tqdm
 
@@ -28,6 +27,7 @@ def add_negative_samples(
     data: List[Dict[str, Any]],
     num_negative_samples: int,
     seed: int = 42,
+    port: int = 9000,
 ) -> List[Dict[str, Any]]:
     if num_negative_samples == 0:
         return data
@@ -70,7 +70,7 @@ def add_negative_samples(
             unique_texts.add(item['question'])
             unique_texts.update(item['paragraphs'])
         
-        client = CoreNLPClient(annotators=['tokenize', 'ner'], be_quiet=True)
+        client = CoreNLPClient(annotators=['tokenize', 'ner'], be_quiet=True, endpoint=f'http://localhost:{port}')
         for text in tqdm(list(unique_texts), desc="Extracting temporal expressions"):
             expressions = extract_temporal_expressions(client, text)
             temporal_cache[text] = expressions
