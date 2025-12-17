@@ -20,7 +20,7 @@ def add_negative_samples(
     data_str = json.dumps(data, sort_keys=True)
     data_hash = hashlib.md5(data_str.encode()).hexdigest()[:8]
     
-    cache_file = cache_path / f"negative_samples_bm25_seed{seed}_{data_hash}.json"
+    cache_file = cache_path / f"negative_samples_bm25_seed{seed}_{data_hash}_{num_negatives}.json"
     
     if cache_file.exists():
         try:
