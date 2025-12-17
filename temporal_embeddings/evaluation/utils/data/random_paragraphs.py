@@ -11,7 +11,8 @@ import pandas as pd
 
 def add_negative_samples(
     data: List[Dict[str, Any]],
-    seed: int = 42,
+    num_negatives: int,
+    seed: int = 42
 ) -> List[Dict[str, Any]]:
     cache_path = Path("output/negative_samples")
     cache_path.mkdir(parents=True, exist_ok=True)
@@ -88,7 +89,7 @@ def add_negative_samples(
         else:
             negative_samples = available_negatives
         
-        combined_paragraphs = answer_paragraphs + negative_samples
+        combined_paragraphs = answer_paragraphs + negative_samples[:num_negatives]
         
         indices = list(range(len(combined_paragraphs)))
         random.shuffle(indices)

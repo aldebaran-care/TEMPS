@@ -18,7 +18,7 @@ def compute_bm25_similarities(bm25_model_name: str, benchmark_file_path: Path, b
 
     print(f"Loading benchmark data from: {benchmark_file_path}")
     with benchmark_file_path.open("r", encoding="utf-8") as f:
-        benchmark_data = add_negative_samples(json.load(f))
+        benchmark_data = add_negative_samples(json.load(f), num_negatives=num_negative_samples)
         print(f"Loaded {len(benchmark_data)} benchmark items")
 
         all_paragraphs: List[str] = []

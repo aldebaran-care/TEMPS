@@ -41,7 +41,7 @@ def evaluate_sutime(model_name: str, benchmark: str, benchmark_file_path: Path, 
     ground_truth: List[List[int]] = []
 
     with benchmark_file_path.open("r", encoding="utf-8") as f:
-        benchmark_data: List[Dict] = add_negative_samples(json.load(f))
+        benchmark_data: List[Dict] = add_negative_samples(json.load(f), num_negatives=num_negative_samples)
 
         for element in benchmark_data:
             ground_truth.append(element["answer"])

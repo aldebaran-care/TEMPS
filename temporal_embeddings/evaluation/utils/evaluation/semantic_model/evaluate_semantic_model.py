@@ -42,7 +42,7 @@ def evaluate_semantic_model(semantic_model_name: str, max_seq_len: int, benchmar
     ground_truth: List[List[int]] = []
 
     with open(benchmark_file_path, "r") as f:
-        benchmark_data: List[dict] = add_negative_samples(json.load(f))
+        benchmark_data: List[dict] = add_negative_samples(json.load(f), num_negatives=num_negative_samples)
 
         for e in benchmark_data:
             ground_truth.append(e["answer"])
