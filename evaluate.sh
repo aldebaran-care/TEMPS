@@ -9,9 +9,9 @@ conda activate train-env
 
 BENCHMARKS=("time_sensitive_qa" "ts_retriever" "temp_reason_l1")
 EXTERNAL_MODELS=("all-mpnet-base-v2" "BAAI/bge-large-en-v1.5" "salesforce" "intfloat/e5-base-v2")
-NUM_NEGATIVE_SAMPLES=(-1)
+NUM_NEGATIVE_SAMPLES=(-1 5 10 15 20 25 30 35 40 45 50 55 60 65 70 75 80 85 90 95 100 105 110 115 120 125 130 135 140 145 150 155 160 165 170 175 180 185 190 195 200 300 400 500 1000 1500 2000)
 ALPHA_VALUES=(0.1)
-eval_id="no reranking"
+eval_id="paragraph filtering: sutime 1"
 
 echo "##########################################"
 echo "### EXTERNAL MODELS ONLY (no alpha) ###"
