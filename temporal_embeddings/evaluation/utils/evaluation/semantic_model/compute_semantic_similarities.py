@@ -135,10 +135,6 @@ def compute_salesforce_similarities(benchmark_file_path: Path, semantic_cache_fi
     print(f"Using Salesforce model: {model_name}")
     print(f"Task description: {task}")
     
-    print("Loading Salesforce model...")
-    model = SentenceTransformer(model_name, trust_remote_code=True)
-    print("Salesforce model loaded successfully")
-    
     print("Processing benchmark items with Salesforce model...")
     with benchmark_file_path.open("r", encoding="utf-8") as f:
         benchmark_data = add_negative_samples(json.load(f))
@@ -164,6 +160,10 @@ def compute_salesforce_similarities(benchmark_file_path: Path, semantic_cache_fi
         print(f"No semantic cache file found - will create new cache")
     
         print("\n=== STAGE 1: Computing Embeddings ===")
+
+        print("Loading Salesforce model...")
+        model = SentenceTransformer(model_name, trust_remote_code=True)
+        print("Salesforce model loaded successfully")
         
         questions_to_encode = []
         question_texts = []
