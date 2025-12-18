@@ -8,28 +8,28 @@ cd /mnt/beegfs/home/hassani/training_an_em/project/temporal-embeddings
 conda activate train-env
 
 BENCHMARKS=("time_sensitive_qa" "ts_retriever" "temp_reason_l1")
-EXTERNAL_MODELS=("all-mpnet-base-v2" "BAAI/bge-large-en-v1.5" "intfloat/e5-base-v2")
-NUM_NEGATIVE_SAMPLES=(-1 5 100 200 500 1000 2000 3000 5000 10000)
+EXTERNAL_MODELS=("intfloat/e5-base-v2")
+NUM_NEGATIVE_SAMPLES=(-1 5 10 15 20 25 30 35 40 45 50 55 60 65 70 75 80 85 90 95 100)
 ALPHA_VALUES=(0.1)
 eval_id="paragraph filtering: bm25 2"
 
-echo "##########################################"
-echo "### EXTERNAL MODELS ONLY (no alpha) ###"
-echo "##########################################"
+# echo "##########################################"
+# echo "### EXTERNAL MODELS ONLY (no alpha) ###"
+# echo "##########################################"
 
-for benchmark in "${BENCHMARKS[@]}"; do
-    echo ""
-    echo "=== BENCHMARK: $benchmark ==="
+# for benchmark in "${BENCHMARKS[@]}"; do
+#     echo ""
+#     echo "=== BENCHMARK: $benchmark ==="
     
-    for num_neg in "${NUM_NEGATIVE_SAMPLES[@]}"; do
-        echo "Num Negative Samples: $num_neg"
+#     for num_neg in "${NUM_NEGATIVE_SAMPLES[@]}"; do
+#         echo "Num Negative Samples: $num_neg"
         
-        for external_model in "${EXTERNAL_MODELS[@]}"; do
-            echo "External Model: $external_model"
-            python3 evaluate.py --model_name=$external_model --benchmark=$benchmark --eval_id="$eval_id" --top_k=5 --metric=all --num_negative_samples=$num_neg
-        done
-    done
-done
+#         for external_model in "${EXTERNAL_MODELS[@]}"; do
+#             echo "External Model: $external_model"
+#             python3 evaluate.py --model_name=$external_model --benchmark=$benchmark --eval_id="$eval_id" --top_k=5 --metric=all --num_negative_samples=$num_neg
+#         done
+#     done
+# done
 
 for alpha in "${ALPHA_VALUES[@]}"; do
     echo "##########################################"
