@@ -9,7 +9,7 @@ conda activate train-env
 
 BENCHMARKS=("time_sensitive_qa" "ts_retriever" "temp_reason_l1")
 EXTERNAL_MODELS=("all-mpnet-base-v2" "BAAI/bge-large-en-v1.5" "intfloat/e5-base-v2" "salesforce")
-NUM_NEGATIVE_SAMPLES=($(seq 0 20 1000))
+NUM_NEGATIVE_SAMPLES=($(seq 5 20 1000))
 ALPHA_VALUES=(0.1 0.25 0.5 0.75 0.9)
 eval_id="paragraph filtering with bm25 : 0 to 1000"
 
