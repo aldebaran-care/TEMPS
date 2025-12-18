@@ -77,17 +77,15 @@ def add_negative_samples(
         answer_paragraphs = []
         if original_answer_indices:
             answer_paragraphs = [original_paragraphs[idx] for idx in original_answer_indices if idx < len(original_paragraphs)]
-        
-        available_negatives = [p for p in all_paragraphs_list if p not in original_paragraphs]
-        
+                
         question = item['question']
         
         if question in bm25_cache_df.index:
-            question_scores = bm25_cache_df.loc[question, available_negatives]
+            question_scores = bm25_cache_df.loc[question, all_paragraphs_list]
             
             negative_samples = question_scores.sort_values(ascending=False).index.tolist()
         else:
-            negative_samples = available_negatives
+            raise ValueError(f"Question not found in BM25 cache: {question}")
         
         combined_paragraphs = negative_samples[:num_negatives]
         
