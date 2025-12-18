@@ -8,10 +8,10 @@ cd /mnt/beegfs/home/hassani/training_an_em/project/temporal-embeddings
 conda activate train-env
 
 BENCHMARKS=("time_sensitive_qa" "ts_retriever" "temp_reason_l1")
-EXTERNAL_MODELS=("all-mpnet-base-v2" "BAAI/bge-large-en-v1.5" "salesforce" "intfloat/e5-base-v2")
-NUM_NEGATIVE_SAMPLES=(1 2 3 4)
+EXTERNAL_MODELS=("all-mpnet-base-v2"")
+NUM_NEGATIVE_SAMPLES=(1 5 10 20 100)
 ALPHA_VALUES=(0.1)
-eval_id="paragraph filtering: bm25"
+eval_id="paragraph filtering: bm25 1"
 
 echo "##########################################"
 echo "### EXTERNAL MODELS ONLY (no alpha) ###"
