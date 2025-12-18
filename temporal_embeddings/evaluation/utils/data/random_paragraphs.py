@@ -89,7 +89,7 @@ def add_negative_samples(
         else:
             negative_samples = available_negatives
         
-        combined_paragraphs = answer_paragraphs + negative_samples[:num_negatives]
+        combined_paragraphs = negative_samples[:num_negatives]
         
         indices = list(range(len(combined_paragraphs)))
         random.shuffle(indices)
