@@ -9,9 +9,9 @@ conda activate train-env
 
 BENCHMARKS=("time_sensitive_qa")
 EXTERNAL_MODELS=("intfloat/e5-base-v2")
-NUM_NEGATIVE_SAMPLES=(25)
+NUM_NEGATIVE_SAMPLES=(-1 25 100)
 ALPHA_VALUES=($(seq 0.05 0.05 0.95))
-eval_id="paragraph filtering with bm25 : 0 to 1000"
+eval_id="paragraph filtering with bm25 : 22/12/2025"
 
 echo "##########################################"
 echo "### EXTERNAL MODELS ONLY (no alpha) ###"
