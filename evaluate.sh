@@ -10,7 +10,7 @@ conda activate train-env
 BENCHMARKS=("time_sensitive_qa")
 EXTERNAL_MODELS=("intfloat/e5-base-v2")
 NUM_NEGATIVE_SAMPLES=(25)
-ALPHA_VALUES=($(seq 0.01 0.01 0.2))
+ALPHA_VALUES=($(seq 0.05 0.05 0.95))
 eval_id="paragraph filtering with bm25 : 0 to 1000"
 
 echo "##########################################"
