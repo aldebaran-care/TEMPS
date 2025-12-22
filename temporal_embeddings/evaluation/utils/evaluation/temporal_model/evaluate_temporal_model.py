@@ -58,7 +58,10 @@ def evaluate_temporal_model(temporal_model_name: str, temporal_model_path: Path,
     similarities_list: List[List[float]] = []
     
     for _, benchmark_item in enumerate(benchmark_data):
-        question_similarities = temporal_similarities.loc[benchmark_item["question"]][benchmark_item["paragraphs"]].tolist
+        question_similarities = temporal_similarities.loc[benchmark_item["question"]][benchmark_item["paragraphs"]].tolist()
+
+        assert len(question_similarities) == len(benchmark_item["paragraphs"]), "Mismatch between similarities and paragraphs lengths"
+
         similarities_list.append(question_similarities)
     
     print(f"Filtered to {len(similarities_list)} similarity lists with candidate paragraphs only")
