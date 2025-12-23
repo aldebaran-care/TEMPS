@@ -91,7 +91,17 @@ def evaluate_temporal_semantic_model(temporal_model_name: str, semantic_model_na
         merged_similarities: pd.DataFrame = reciprocal_rank_fusion(temporal_similarities, semantic_similarities, alpha=abs(alpha))
     else:
         print(f"Merging similarities using linear combination with alpha={alpha}...")
-        merged_similarities: pd.DataFrame = (alpha * temporal_similarities) + ((1 - alpha) * semantic_similarities)
+        print("Normalizing temporal and semantic similarities to handle different scales...")
+        
+        normalized_temporal = temporal_similarities.apply(lambda row: normalize_list(row.tolist()), axis=1, result_type='expand')
+        normalized_temporal.columns = temporal_similarities.columns
+        normalized_temporal.index = temporal_similarities.index
+        
+        normalized_semantic = semantic_similarities.apply(lambda row: normalize_list(row.tolist()), axis=1, result_type='expand')
+        normalized_semantic.columns = semantic_similarities.columns
+        normalized_semantic.index = semantic_similarities.index
+        
+        merged_similarities: pd.DataFrame = (alpha * normalized_temporal) + ((1 - alpha) * normalized_semantic)
     
     print("Filtering merged similarities to only include candidate paragraphs...")
     filtered_similarities: List[List[float]] = []
