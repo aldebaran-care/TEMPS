@@ -12,6 +12,14 @@ from temporal_embeddings.utils.math.normalize import normalize_list
 from temporal_embeddings.evaluation.utils.notion.notion import log_metrics_to_notion
 from temporal_embeddings.evaluation.utils.data.random_paragraphs import add_negative_samples
 
+def reciprocal_rank_fusion(temporal_sims: pd.DataFrame, semantic_sims: pd.DataFrame, k: int = 60) -> pd.DataFrame:
+    temporal_ranks = temporal_sims.rank(axis=1, method='min', ascending=False)
+    semantic_ranks = semantic_sims.rank(axis=1, method='min', ascending=False)
+    
+    rrf_scores = 1 / (k + temporal_ranks) + 1 / (k + semantic_ranks)
+    
+    return rrf_scores
+
 def evaluate_temporal_semantic_model(temporal_model_name: str, semantic_model_name: str, temporal_model_path: Path, batch_size: int, max_seq_len: int, benchmark: str, benchmark_file_path: Path, eval_id: str, top_k: int, metric: str, alpha: float = 0.5, num_negative_samples: int = 0) -> None:
     print(f"Starting temporal semantic model evaluation")
     print(f"Temporal model: {temporal_model_name} at {temporal_model_path}")
@@ -78,7 +86,12 @@ def evaluate_temporal_semantic_model(temporal_model_name: str, semantic_model_na
 
     print(f"Loaded ground truth for {len(ground_truth)} items")
 
-    merged_similarities: pd.DataFrame = (alpha * temporal_similarities) + ((1 - alpha) * semantic_similarities)
+    if alpha == -1:
+        print("Merging similarities using Reciprocal Rank Fusion...")
+        merged_similarities: pd.DataFrame = reciprocal_rank_fusion(temporal_similarities, semantic_similarities)
+    else:
+        print(f"Merging similarities using linear combination with alpha={alpha}...")
+        merged_similarities: pd.DataFrame = (alpha * temporal_similarities) + ((1 - alpha) * semantic_similarities)
     
     print("Filtering merged similarities to only include candidate paragraphs...")
     filtered_similarities: List[List[float]] = []
