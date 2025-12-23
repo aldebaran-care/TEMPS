@@ -16,7 +16,7 @@ def reciprocal_rank_fusion(temporal_sims: pd.DataFrame, semantic_sims: pd.DataFr
     temporal_ranks = temporal_sims.rank(axis=1, method='min', ascending=False)
     semantic_ranks = semantic_sims.rank(axis=1, method='min', ascending=False)
     
-    rrf_scores = 1 / (k + temporal_ranks) + 1 / (k + semantic_ranks)
+    rrf_scores = 0.1 / (k + temporal_ranks) + 0.9 / (k + semantic_ranks)
     
     return rrf_scores
 
