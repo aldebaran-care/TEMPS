@@ -51,12 +51,14 @@ def compute_temporal_similarities(temporal_model_name: str, temporal_model_path:
                     print("Collecting texts to encode...")
                     
                     questions_to_encode = []
+                    question_reference_dates = []
                     paragraphs_to_encode = []
                     
                     for benchmark_item in tqdm(benchmark_data, desc="Collecting texts"):
                         question: str = benchmark_item["question"]
                         if question not in embedding_cache.index:
                             questions_to_encode.append(question)
+                            question_reference_dates.append(benchmark_item.get("reference_date", reference_date))
                         
                         paragraphs: List[str] = benchmark_item["paragraphs"]
                         for paragraph in paragraphs:
@@ -67,8 +69,7 @@ def compute_temporal_similarities(temporal_model_name: str, temporal_model_path:
                     
                     if questions_to_encode:
                         print("Computing question embeddings...")
-                        question_dates = [reference_date] * len(questions_to_encode)
-                        question_embeddings = inference.compute_embeddings(questions_to_encode, question_dates)
+                        question_embeddings = inference.compute_embeddings(questions_to_encode, question_reference_dates)
                         embedding_cache = pd.concat([embedding_cache, question_embeddings])
                     
                     if paragraphs_to_encode:
