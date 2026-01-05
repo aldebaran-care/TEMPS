@@ -31,6 +31,7 @@ def batch_encode(model, texts_to_encode: List[str], batch_size: int = 64) -> Lis
     num_batches = ceil(len(texts_to_encode) / batch_size)
     for i in tqdm(range(num_batches), desc="Encoding batches"):
         batch = texts_to_encode[i * batch_size:(i + 1) * batch_size]
+        batch = [b[:400] for b in batch]
         encoded_embeddings.extend(model.encode(batch, show_progress_bar=False))
     return encoded_embeddings
 
