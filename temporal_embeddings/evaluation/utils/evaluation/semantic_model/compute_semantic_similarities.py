@@ -24,7 +24,7 @@ def encode(model: SentenceTransformer, texts: List[str], prompt_name: str = None
     
     return model.encode(texts, convert_to_tensor=True)
 
-def batch_encode(model, texts_to_encode: List[str], batch_size: int = 128) -> List[List[float]]:
+def batch_encode(model, texts_to_encode: List[str], batch_size: int = 64) -> List[List[float]]:
     """Encode texts in batches to optimize memory usage."""
 
     encoded_embeddings = []
