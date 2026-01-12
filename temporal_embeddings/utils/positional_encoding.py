@@ -17,10 +17,10 @@ def positional_encoding(dates, dim=POSITIONAL_ENCODING_DIM, n=10000) -> torch.Te
     """
     P = torch.zeros(len(dates), dim)
 
-    start_date: datetime = datetime(START_DATE, 1, 1)
+    start_date: datetime = datetime.strptime(START_DATE, "%d %B %Y")
 
     for j in range(len(dates)):
-        date: datetime = datetime.strptime(dates[j], "%d %B %Y")
+        date: datetime = datetime.strptime(dates[j], "%Y-%m-%d")
         k = (date - start_date).days
         
         for i in torch.arange(int(dim/2)):
