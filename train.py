@@ -5,11 +5,10 @@ from pathlib import Path
 
 import torch
 from tqdm import trange, tqdm
-from transformers.tokenization_utils import BatchEncoding
 from torch.utils.tensorboard import SummaryWriter
 
 from temporal_embeddings.parameters.parameters import (
-    EPOCHS, DEVICE, DTYPE, NUM_EVAL_STEPS, OUTPUT_DIRECTORY_PATH, MODEL_NAME, LR,
+    EPOCHS, DEVICE, NUM_EVAL_STEPS, OUTPUT_DIRECTORY_PATH, MODEL_NAME, LR,
     WEIGHT_DECAY, NUM_WARMUP_RATIO, TEMPERATURE, INPUT_FILE_PATH, BATCH_SIZE, SEED
 )
 from temporal_embeddings.model.gauss_model import GaussOutput
@@ -111,7 +110,7 @@ def main(data_fraction: float,
                     dates=batch.sent1_date
                 )
 
-                sim_mat: torch.FloatTensor = asymmetrical_kl_sim(sent0_out.mu, sent0_out.std, sent1_out.mu, sent1_out.std)
+                sim_mat: torch.Tensor = asymmetrical_kl_sim(sent0_out.mu, sent0_out.std, sent1_out.mu, sent1_out.std)
                 
                 loss_func = CoSentLoss()
                 loss = loss_func(sim_mat, batch.score)
@@ -179,21 +178,21 @@ def main(data_fraction: float,
         "best-step": best_step,
         "best-dev-auc": best_dev_score,
     }
-    dev_metrics_path = f"{output_directory_path}/metrics/dev_metrics_{model_name.replace('/', '_')}_{current_time}.json"
-    create_folders(Path(dev_metrics_path).parent)
+    dev_metrics_path: Path = Path(f"{output_directory_path}/metrics/dev_metrics_{model_name.replace('/', '_')}_{current_time}.json")
+    create_folders([dev_metrics_path.parent])
     save_json(dev_metrics, dev_metrics_path)
     print("Dev metrics saved in:", dev_metrics_path)
 
     execution.model.load_state_dict(best_state_dict)
     model_path = f"{output_directory_path}/trained_models/model_{model_name.replace('/', '_')}_{current_time}.pth"
-    create_folders(Path(model_path).parent)
+    create_folders([Path(model_path).parent])
     torch.save(execution.model.state_dict(), model_path)
     print("Model saved in:", model_path)
     execution.model.eval().to(DEVICE)
 
     metrics = execution.evaluator(split="test")
-    metrics_path = f"{output_directory_path}/metrics/metrics_{model_name.replace('/', '_')}_{current_time}.json"
-    create_folders(Path(metrics_path).parent)
+    metrics_path: Path = Path(f"{output_directory_path}/metrics/metrics_{model_name.replace('/', '_')}_{current_time}.json")
+    create_folders([metrics_path.parent])
     save_json(metrics, metrics_path)
     print("Train metrics saved in:", metrics_path)
 
