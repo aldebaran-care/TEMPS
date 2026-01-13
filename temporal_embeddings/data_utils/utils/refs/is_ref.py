@@ -1,7 +1,7 @@
 import re
 
 def is_ref(annotation):
-    patterns_dicts = {"PRESENT_REF": "p", "TMO": "m", "TNI": "n", "TEV": "e", "THIS MO": "tm", "THIS NI": "tn"}
+    patterns_dicts = {"PRESENT_REF": "p", "THIS MO": "tm", "THIS NI": "tn"}
     patterns = [k for k, v in patterns_dicts.items()]
 
     for pattern in patterns:

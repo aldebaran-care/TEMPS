@@ -1,9 +1,7 @@
-def ref_to_date(annotation, current_date):
-    if annotation == "PRESENT_REF":
-        return [current_date]
-    if annotation == "THIS NI":
-        return [current_date]
-    if annotation == "THIS MO":
+from typing import List
+
+def ref_to_date(annotation: str, current_date: str) -> List[str]:
+    if annotation in ["PRESENT_REF", "THIS MO", "THIS NI", "TEV", "TMO", "TNI"]:
         return [current_date]
     
-    return None
+    raise ValueError(f"Cannot convert ref to date: {annotation}")

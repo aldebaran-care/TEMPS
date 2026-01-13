@@ -1,4 +1,4 @@
-def compute_similarity_refs(first_ref, second_ref):
+def compute_similarity_refs(first_ref: str, second_ref: str) -> float:
     if first_ref == second_ref:
         return 1.0
 
@@ -16,3 +16,5 @@ def compute_similarity_refs(first_ref, second_ref):
             return 0.0
         else:
             return 0.1
+        
+    raise ValueError(f"Unknown refs for similarity computation: {first_ref}, {second_ref}")

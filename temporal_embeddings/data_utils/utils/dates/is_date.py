@@ -1,28 +1,43 @@
 import re
-from temporal_embeddings.data_utils.utils.dates.dates_settings import IS_DATE_START_DATE
+from typing import Tuple
+from datetime import datetime
 
-START_DATE = IS_DATE_START_DATE
+from temporal_embeddings.data_utils.utils.dates.dates_settings import START_DATE, END_DATE
 
-def is_date(text):
-    yyyy_pattern = r'^\d{4}$'
-    yyyy_mm_pattern = r'^\d{4}-\d{2}$'
-    yyyy_mm_dd_pattern = r'^\d{4}-\d{2}-\d{2}$'
-    yyyy_s_pattern = r'^\d{4}-(?:SU|WI|FA|SP)$'
+def is_valid_date(text: str) -> Tuple[bool, str]:
+    """
+    Check if the given text is a valid date in one of the accepted formats.
+    Returns a tuple (is_valid: bool, date_type: str).
+    """
+    start_date_obj: datetime = datetime.strptime(START_DATE, "%Y-%m-%d")
+    end_date_obj: datetime = datetime.strptime(END_DATE, "%Y-%m-%d")
 
-    if re.match(r"^\d{4}", text):
-        if int(text[:4]) < START_DATE:
-            return False, f"Less than {START_DATE}"
-
-    if re.match(yyyy_mm_dd_pattern, text):
+    if re.match(r'^\d{4}-\d{2}-\d{2}$', text):
+        date_obj: datetime = datetime.strptime(text, "%Y-%m-%d")
+        
+        if date_obj < start_date_obj or date_obj > end_date_obj:
+            return False, f"Date \"{text}\" out of range ({START_DATE} to {END_DATE})"
+        
         return True, "yyyy-mm-dd"
-    elif re.match(yyyy_mm_pattern, text):
+    
+    elif re.match(r'^\d{4}-\d{2}$', text):
+        date_obj: datetime = datetime.strptime(text, "%Y-%m")
+
+        if date_obj < start_date_obj or date_obj > end_date_obj:
+            return False, f"Date \"{text}\" out of range ({START_DATE} to {END_DATE})"
+
         return True, "yyyy-mm"
-    elif re.match(yyyy_pattern, text):
-        if int(text) >= START_DATE:
-            return True, "yyyy"
-        else:
-            return False, "Not a year"
-    elif re.match(yyyy_s_pattern, text):
+    
+    elif re.match(r'^\d{4}$', text):
+        date_obj: datetime = datetime.strptime(text, "%Y")
+
+        if date_obj < start_date_obj or date_obj > end_date_obj:
+            return False, f"Date \"{text}\" out of range ({START_DATE} to {END_DATE})"
+
+        return True, "yyyy"
+    
+    elif re.match(r'^\d{4}-(?:SU|WI|FA|SP)$', text):
         return True, "yyyy-s"
+    
     else:
         return False, "Invalid format"

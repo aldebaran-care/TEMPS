@@ -1,91 +1,109 @@
-import json
-from tqdm import tqdm
+import random
 from pathlib import Path
-import pandas as pd  # <-- Added import
+from typing import List, Tuple
+from multiprocessing import Pool, cpu_count
+
+import pandas as pd
+from tqdm import tqdm
 
 from temporal_embeddings.data_utils.utils.dates.dates_settings import START_DATE, END_DATE
-from temporal_embeddings.synthetic_data.utils.refs.ref_to_date import ref_to_date
-from temporal_embeddings.synthetic_data.utils.offsets.offset_to_date import offset_to_date
-from temporal_embeddings.synthetic_data.utils.intervals.interval_to_date import interval_to_date
-from temporal_embeddings.synthetic_data.utils.dates.to_explicit_date import to_explicit_date
-from temporal_embeddings.synthetic_data.utils.refs.is_ref import is_ref
-from temporal_embeddings.synthetic_data.utils.offsets.is_offset import is_offset
-from temporal_embeddings.synthetic_data.utils.dates.is_date import is_date
-from temporal_embeddings.synthetic_data.utils.intervals.is_interval import is_interval
-from temporal_embeddings.data_utils.utils.generate_random_temporal_expression import generate_random_temporal_expression, generate_close_random_temporal_expression
+from temporal_embeddings.data_utils.utils.offsets.offset_to_date import offset_to_date
+from temporal_embeddings.data_utils.utils.refs.ref_to_date import ref_to_date
+from temporal_embeddings.data_utils.utils.intervals.interval_to_date import interval_to_date
+from temporal_embeddings.data_utils.utils.dates.to_explicit_date import to_explicit_date
+from temporal_embeddings.data_utils.utils.offsets.is_offset import is_offset
+from temporal_embeddings.data_utils.utils.refs.is_ref import is_ref
+from temporal_embeddings.data_utils.utils.intervals.is_interval import is_interval
+from temporal_embeddings.data_utils.utils.generate_random_temporal_expression import generate_random_temporal_expression
 from temporal_embeddings.data_utils.utils.compute_similarity_expressions import compute_similarity_expressions
 from temporal_embeddings.synthetic_data.utils.mappings.expression_to_text import expression_to_text
-from temporal_embeddings.synthetic_data.utils.dates.generate_random_date import generate_random_date_full
+from temporal_embeddings.data_utils.utils.dates.generate_random_date import generate_random_date
+from temporal_embeddings.data_utils.utils.dates.is_date import is_valid_date
 
-def create_synthetic_dataset(output_file_path: Path = None, size: int = 10) -> None:
-    output_data = []
-
-    for _ in tqdm(range(size)):
-        first_random_temporal_expression = generate_random_temporal_expression()
-        first_random_temporal_text = expression_to_text(first_random_temporal_expression)
-        current_date = generate_random_date_full(START_DATE, END_DATE)
-        current_text = expression_to_text(current_date)
-
-        year = int(current_date.split("-")[0])
-        if START_DATE < year < END_DATE:
-            start_year = year - 1
-            end_year = year + 1
-        else:
-            start_year = START_DATE
-            end_year = END_DATE
-        current_date_target = generate_random_date_full(start_year, end_year)
-        current_target_text = expression_to_text(current_date_target)
+def generate_single_sample(seed_offset: int) -> List[Tuple[str, str, str, str, float]]:
+    random.seed(42 + seed_offset)
+    output_data: List[Tuple[str, str, str, str, float]] = []
+    
+    first_random_temporal_expression: str = generate_random_temporal_expression(probabilities=[0.4, 0.1, 0.1, 0.4], close=False, expression="", current_date="")
+    first_random_temporal_expression_text: str = expression_to_text(first_random_temporal_expression)
+    
+    first_reference_date: str = generate_random_date(START_DATE, END_DATE, granularity="day")
+    second_reference_date: str = generate_random_date(START_DATE, END_DATE, granularity="day")
+    
+    for _ in range(4):
+        second_random_temporal_expression: str = generate_random_temporal_expression(probabilities=[0.3, 0.2, 0.1, 0.4], close=False, expression="", current_date="")
+        second_random_temporal_expression_text: str = expression_to_text(second_random_temporal_expression)
         
-        for _ in range(4):
-            second_random_temporal_expression = generate_random_temporal_expression()
-            second_random_temporal_text = expression_to_text(second_random_temporal_expression)
-            
-            similarity = compute_similarity_expressions(first_random_temporal_expression, second_random_temporal_expression, current_date, current_date_target)
+        try:
+            similarity: float = compute_similarity_expressions(first_random_temporal_expression, first_reference_date, second_random_temporal_expression, second_reference_date)
+        except ValueError as e:
+            print(f"Error computing similarity: {e}")
+            continue
 
-            output_data.append((first_random_temporal_text, current_text, second_random_temporal_text, current_target_text, similarity))
-
-        for _ in range(1):
-            dates = None
+        output_data.append((first_random_temporal_expression_text, first_reference_date, second_random_temporal_expression_text, second_reference_date, similarity))
+    
+    for _ in range(1):
+        dates: List[str] = []
+        
+        if is_valid_date(first_random_temporal_expression)[0]:
+            dates = to_explicit_date(first_random_temporal_expression)
+        
+        elif is_offset(first_random_temporal_expression)[0]:
+            dates = offset_to_date(first_random_temporal_expression, first_reference_date)
+        
+        elif is_ref(first_random_temporal_expression)[0]:
+            dates = ref_to_date(first_random_temporal_expression, first_reference_date)
+        
+        elif is_interval(first_random_temporal_expression)[0]:
+            dates = interval_to_date(first_random_temporal_expression)
+        
+        if len(dates) > 0:
+            if len(dates) > 1:
+                second_random_temporal_expression: str = f"{dates[0]},{dates[1]}"
             
-            if is_offset(first_random_temporal_expression)[0]:
-                dates = offset_to_date(first_random_temporal_expression, current_date)
-            
-            elif is_ref(first_random_temporal_expression)[0]:
-                dates = ref_to_date(first_random_temporal_expression, current_date)
-            
-            elif is_date(first_random_temporal_expression)[0]:
-                dates = to_explicit_date(first_random_temporal_expression)
-            
-            elif is_interval(first_random_temporal_expression)[0]:
-                dates = interval_to_date(first_random_temporal_expression)
-            
-            if dates:
-                if len(dates) > 1:
-                    second_random_temporal_expression = f"{dates[0]},{dates[1]}"
-                else:
-                    second_random_temporal_expression = dates[0]
             else:
-                second_random_temporal_expression = generate_close_random_temporal_expression(first_random_temporal_expression, current_date)
-            
-            second_random_temporal_text = expression_to_text(second_random_temporal_expression)
-            
-            similarity = compute_similarity_expressions(first_random_temporal_expression, second_random_temporal_expression, current_date, current_date_target)
-            
-            output_data.append((first_random_temporal_text, current_text, second_random_temporal_text, current_target_text, similarity))
+                second_random_temporal_expression: str = dates[0]
+        
+        else:
+            raise ValueError(f"Cannot derive dates from expression: {first_random_temporal_expression}")
+        
+        try:
+            second_random_temporal_expression_text: str = expression_to_text(second_random_temporal_expression)
+        except ValueError as e:
+            print(f"Error converting expression to text: {e}")
+            continue
+        
+        similarity: float = compute_similarity_expressions(first_random_temporal_expression, first_reference_date, second_random_temporal_expression, second_reference_date)
+        
+        output_data.append((first_random_temporal_expression_text, first_reference_date, second_random_temporal_expression_text, second_reference_date, similarity))
+    
+    return output_data
 
-    # Convert to DataFrame
+def create_synthetic_dataset(output_file_path: Path, size: int) -> None:
+    num_processes = cpu_count()
+    print(f"Using {num_processes} processes for parallel generation")
+    
+    with Pool(processes=num_processes) as pool:
+        results = list(tqdm(
+            pool.imap(generate_single_sample, range(size)),
+            total=size,
+            desc="Generating synthetic data"
+        ))
+    
+    output_data: List[Tuple[str, str, str, str, float]] = []
+    for result in results:
+        output_data.extend(result)
+
     df = pd.DataFrame(output_data, columns=[
-        "first_expression", "current_text", "second_expression", "target_text", "similarity"
+        "first_expression", "first_reference_date", "second_expression", "second_reference_date", "similarity"
     ])
 
-    # Save to CSV
     if output_file_path:
         csv_path = output_file_path.with_suffix(".csv")
         df.to_csv(csv_path, index=False)
 
-    # Optional: Also save as JSON if needed
-    # with output_file_path.open("w", encoding="utf-8") as f:
-    #     json.dump(output_data, f, indent=4)
+    else:
+        raise ValueError("Output file path must be provided.")
 
-    count = (df["similarity"] > 0.5).sum()
-    print(f"Close similarities : {count / len(df)}")
+    count = (df["similarity"] > 0.9).sum()
+    print(f"Number of pairs with similarity > 0.9: {count} out of {len(df)}")
