@@ -4,9 +4,7 @@ from torch.utils.data import DataLoader
 from transformers import AutoTokenizer
 from transformers.tokenization_utils import BatchEncoding, PreTrainedTokenizer
 from transformers.optimization import get_linear_schedule_with_warmup
-from accelerate import Accelerator
 from scipy.stats import spearmanr
-from accelerate.utils import DistributedDataParallelKwargs
 
 from temporal_embeddings.model.gauss_model import GaussModel, GaussOutput
 from temporal_embeddings.parameters.parameters import (
@@ -32,16 +30,15 @@ class Execution():
             "output_directory_path": output_directory_path,
         }
 
-        kwargs = DistributedDataParallelKwargs(broadcast_buffers=False)
-        self.accelerator = Accelerator(kwargs)
+        self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
         self.model: GaussModel = GaussModel(self.parameters["model_name"], False)
         self.model = self.model.eval()
-        self.model = self.model.to(self.accelerator.device)
+        self.model = self.model.to(self.device)
         
         if continue_training:
             self.model.load_state_dict(torch.load(model_path))
-            self.model = self.model.to(self.accelerator.device)
+            self.model = self.model.to(self.device)
             self.model = self.model.eval()
         
         self.tokenizer: PreTrainedTokenizer = AutoTokenizer.from_pretrained(self.parameters["model_name"], model_max_length=MAX_SEQ_LEN, use_fast=True)
@@ -49,10 +46,6 @@ class Execution():
         self.gauss_data: GaussData = GaussData(self.parameters["input_file_path"], self.tokenizer, self.parameters["batch_size"], data_fraction)
 
         self.optimizer, self.lr_scheduler = self.create_optimizer(model=self.model, train_steps_per_epoch=len(self.gauss_data.train_dataloader))
-
-        self.model, self.optimizer, self.gauss_data.train_dataloader, self.gauss_data.val_dataloader, self.gauss_data.test_dataloader, self.lr_scheduler = self.accelerator.prepare(
-            self.model, self.optimizer, self.gauss_data.train_dataloader, self.gauss_data.val_dataloader, self.gauss_data.test_dataloader, self.lr_scheduler
-        )
 
     def tokenize(self, batch: list[str]) -> BatchEncoding:
         return self.tokenizer(batch, padding=True, truncation=True, return_tensors="pt", max_length=MAX_SEQ_LEN, add_special_tokens=SPECIAL_TOKENS)
@@ -120,18 +113,18 @@ class Execution():
 
         for batch in tqdm(data_loader, desc=f"Evaluating {split} split"):
             sent0_out = self.model.forward(
-                input_ids=batch.sent0.input_ids, 
-                attention_mask=batch.sent0.attention_mask, 
-                dates=batch.sent0_date
+                input_ids=batch.sent0.input_ids.to(self.device), 
+                attention_mask=batch.sent0.attention_mask.to(self.device), 
+                dates=batch.sent0_date.to(self.device)
             )
             
             sent1_out = self.model.forward(
-                input_ids=batch.sent1.input_ids, 
-                attention_mask=batch.sent1.attention_mask, 
-                dates=batch.sent1_date
+                input_ids=batch.sent1.input_ids.to(self.device), 
+                attention_mask=batch.sent1.attention_mask.to(self.device), 
+                dates=batch.sent1_date.to(self.device)
             )
             
-            scores = torch.cat([scores.to(self.accelerator.device), batch.score.to(self.accelerator.device)], dim=0)
+            scores = torch.cat([scores.to(self.device), batch.score.to(self.device)], dim=0)
 
             sent0_output.append(sent0_out)
             sent1_output.append(sent1_out)
@@ -153,7 +146,7 @@ class Execution():
 
         output: list[GaussOutput] = []
         for batch in data_loader:
-            batch_device = {k: v.to(self.accelerator.device) for k, v in batch.items()}
+            batch_device = {k: v.to(self.device) for k, v in batch.items()}
             out = self.model.forward(**batch_device)
             output.append(out)
 
