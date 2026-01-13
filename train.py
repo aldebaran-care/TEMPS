@@ -113,7 +113,7 @@ def main(data_fraction: float,
                 sim_mat: torch.Tensor = asymmetrical_kl_sim(sent0_out.mu, sent0_out.std, sent1_out.mu, sent1_out.std)
                 
                 loss_func = CoSentLoss()
-                loss = loss_func(sim_mat, batch.score)
+                loss = loss_func(sim_mat, batch.score.to(DEVICE))
 
                 train_losses.append(loss.item())
 
