@@ -118,7 +118,7 @@ def main(data_fraction: float,
                 train_losses.append(loss.item())
 
                 execution.optimizer.zero_grad()
-                execution.accelerator.backward(loss)
+                loss.backward()
                 execution.optimizer.step()
                 execution.lr_scheduler.step()
             
