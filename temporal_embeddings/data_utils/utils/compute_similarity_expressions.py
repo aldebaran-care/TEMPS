@@ -7,7 +7,6 @@ from temporal_embeddings.data_utils.utils.offsets.offset_to_date import offset_t
 from temporal_embeddings.data_utils.utils.refs.ref_to_date import ref_to_date
 from temporal_embeddings.data_utils.utils.intervals.interval_to_date import interval_to_date
 from temporal_embeddings.data_utils.utils.dates.to_explicit_date import to_explicit_date
-from temporal_embeddings.data_utils.utils.refs.compute_similarity_refs import compute_similarity_refs
 from temporal_embeddings.data_utils.utils.offsets.is_offset import is_offset
 from temporal_embeddings.data_utils.utils.refs.is_ref import is_ref
 from temporal_embeddings.data_utils.utils.intervals.is_interval import is_interval

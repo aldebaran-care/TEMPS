@@ -1,15 +1,6 @@
 from typing import List
-import calendar
 
 from temporal_embeddings.data_utils.utils.dates.is_date import is_valid_date
-
-# Astronomical season dates (month, day)
-season_dates = {
-    "SP": {"start": (3, 20), "end": (6, 20)},   # Spring: March 20 to June 20
-    "SU": {"start": (6, 21), "end": (9, 21)},   # Summer: June 21 to September 21
-    "FA": {"start": (9, 22), "end": (12, 20)},  # Fall: September 22 to December 20
-    "WI": {"start": (12, 21), "end": (3, 19)},  # Winter: December 21 to March 19 (next year)
-}
 
 def to_explicit_date(annotation: str) -> List[str]:
     if not is_valid_date(annotation)[0]:
@@ -31,24 +22,26 @@ def to_explicit_date(annotation: str) -> List[str]:
         
         return [f"{year}-{month}-01", f"{year}-{month}-{last_day}"]
     
-    elif date_format == "yyyy-s":
-        year = annotation.split("-")[0]
-        season = annotation.split("-")[1]
+    elif date_format == "yyyys":
+        decade_prefix = annotation[:4]
         
-        start_month, start_day = season_dates[season]["start"]
-        end_month, end_day = season_dates[season]["end"]
+        start_year = int(decade_prefix)
+        end_year   = start_year + 9
         
-        start_year = int(year)
-        end_year = int(year)
+        if "-" in annotation:
+            part = annotation.split("-")[-1]
+            
+            if part == "early":
+                return [f"{start_year}-01-01", f"{start_year+3}-12-31"]
+            elif part == "mid":
+                return [f"{start_year+4}-01-01", f"{start_year+6}-12-31"]
+            elif part == "late":
+                return [f"{start_year+7}-01-01", f"{end_year}-12-31"]
+            else:
+                raise ValueError(f"Invalid decade part: {part}")
         
-        # Winter spans two calendar years
-        if season == "WI":
-            end_year = start_year + 1
-        
-        start_date = f"{start_year}-{start_month:02d}-{start_day:02d}"
-        end_date = f"{end_year}-{end_month:02d}-{end_day:02d}"
-        
-        return [start_date, end_date]
+        else:
+            return [f"{start_year}-01-01", f"{end_year}-12-31"]
 
     else:
         return [annotation]

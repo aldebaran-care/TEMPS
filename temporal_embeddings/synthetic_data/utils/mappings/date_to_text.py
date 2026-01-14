@@ -45,7 +45,10 @@ DATE_PATTERNS: Dict[str, List[str]] = {
     "yyyy-mm-dd": [
         "{day} {month} {year}",
         "{day}, {month_short}, {year}",
-    ]
+    ],
+    "yyyys": [
+        "{year}s",
+    ],
 }
 
 def date_to_text(annotation: str) -> str:
@@ -100,5 +103,24 @@ def date_to_text(annotation: str) -> str:
             month_num=f"{month_num:02d}",
             year=year,
         )
+    
+    elif date_format == "yyyys":
+        year: str = annotation[:4]
+        qualifier: str = annotation[5:] if len(annotation) > 5 else ""
+                
+        if qualifier == "-early":
+            qualifier_text = "early "
+        elif qualifier == "-mid":
+            qualifier_text = "mid "
+        elif qualifier == "-late":
+            qualifier_text = "late "
+        else:
+            qualifier_text = ""
+        
+        century_text = random.choice(DATE_PATTERNS["yyyys"]).format(
+            year=year,
+        )
+        
+        return f"{qualifier_text}{century_text}"
     
     raise ValueError(f"Cannot convert date to text: {annotation}")

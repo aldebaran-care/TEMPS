@@ -1,28 +1,19 @@
 import random
 from datetime import datetime, timedelta
+from typing import List
+import re
 
 from temporal_embeddings.data_utils.utils.dates.generate_random_date import generate_random_date
 
-def generate_random_interval(start_date: str, end_date: str, granularity: str) -> str:
-    if granularity not in ["year", "month", "day"]:
-        random_granularity: int = random.randint(0, 2)
-
-        if random_granularity == 0:
-            granularity = "year"
-        
-        elif random_granularity == 1:
-            granularity = "month"
-        
-        else:
-            granularity = "day"
- 
-    first_date: str = generate_random_date(start_date, end_date, granularity=granularity)
-    first_dt: datetime = datetime.strptime(first_date, "%Y-%m-%d" if granularity == "day" else "%Y-%m" if granularity == "month" else "%Y")
+def generate_random_interval(start_date: str, end_date: str, granularity_probs: List[float]) -> str:
+    first_date: str = generate_random_date(start_date, end_date, granularity_probs=granularity_probs)
+    first_date_granularity: str = "day" if re.match(r"\d{4}-\d{2}-\d{2}", first_date) else "month" if re.match(r"\d{4}-\d{2}", first_date) else "year"
+    first_dt: datetime = datetime.strptime(first_date if not re.match(r"\d{4}s", first_date) else first_date[:4], "%Y-%m-%d" if first_date_granularity == "day" else "%Y-%m" if first_date_granularity == "month" else "%Y")
     
-    if granularity == "year":
+    if first_date_granularity == "year":
         max_span_days = random.randint(365, 365*20)
     
-    elif granularity == "month":
+    elif first_date_granularity == "month":
         max_span_days = random.randint(30, 730)
     
     else:
@@ -33,9 +24,9 @@ def generate_random_interval(start_date: str, end_date: str, granularity: str) -
     
     actual_end = min(constrained_end, end_dt).strftime("%Y-%m-%d")
 
-    first_date = first_dt.strftime("%Y-%m-%d") if granularity == "day" else f"{first_dt.year}-{first_dt.month:02d}-01" if granularity == "month" else f"{first_dt.year}-01-01"
+    first_date = first_dt.strftime("%Y-%m-%d") if first_date_granularity == "day" else f"{first_dt.year}-{first_dt.month:02d}-01" if first_date_granularity == "month" else f"{first_dt.year}-01-01"
     
-    second_date = generate_random_date(first_date, actual_end, granularity=granularity)
+    second_date = generate_random_date(first_date, actual_end, granularity_probs=granularity_probs)
     
     random_dates = sorted([first_date, second_date])
 

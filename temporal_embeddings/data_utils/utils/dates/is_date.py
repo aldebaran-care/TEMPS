@@ -8,6 +8,7 @@ def is_valid_date(text: str) -> Tuple[bool, str]:
     """
     Check if the given text is a valid date in one of the accepted formats.
     Returns a tuple (is_valid: bool, date_type: str).
+    date_type can be "yyyy-mm-dd", "yyyy-mm", "yyyy", "yyyys", or an error message.
     """
     start_date_obj: datetime = datetime.strptime(START_DATE, "%Y-%m-%d")
     end_date_obj: datetime = datetime.strptime(END_DATE, "%Y-%m-%d")
@@ -36,8 +37,8 @@ def is_valid_date(text: str) -> Tuple[bool, str]:
 
         return True, "yyyy"
     
-    elif re.match(r'^\d{4}-(?:SU|WI|FA|SP)$', text):
-        return True, "yyyy-s"
+    elif re.match(r'^\d{4}s(?:-(early|mid|late))?$', text):
+        return True, "yyyys"
     
     else:
         return False, "Invalid format"
