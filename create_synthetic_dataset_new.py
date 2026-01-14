@@ -2,79 +2,112 @@ import random
 from datetime import datetime, timedelta
 from dateutil.relativedelta import relativedelta
 import argparse
+from typing import Tuple, List, Dict
 
 import pandas as pd
 from tqdm import tqdm
 
+from temporal_embeddings.data_utils.utils.dates.dates_settings import START_DATE, END_DATE
 from temporal_embeddings.data_utils.utils.dates.compute_distance_dates import compute_distance_dates_same_type
 
-MONTHS = [
-    "January", "February", "March", "April", "May", "June",
-    "July", "August", "September", "October", "November", "December"
-]
+MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
 
-def random_month_year(start_year=1100, end_year=2100):
-    month = random.choice(MONTHS)
-    year = random.randint(start_year, end_year)
-    return month, year
+def random_month_year(start_year: int=int(START_DATE.split("-")[0]), end_year: int=int(END_DATE.split("-")[0])) -> Tuple[str, str]:
+    month: str = random.choice(MONTHS)
+    year: int = random.randint(start_year, end_year)
+    
+    return month, str(year)
 
-def month_year_to_yyyy_mm(date_str):
+def month_year_to_yyyy_mm(date_str: str) -> str:
     try:
-        dt = datetime.strptime(date_str, "%B %Y")
+        month_index: int = MONTHS.index(date_str.split(",")[0].strip()) + 1
+        year_str: str = date_str.split(",")[1].strip()
+        dt = datetime.strptime(f"{month_index} {year_str}", "%m %Y")
+        
         return dt.strftime("%Y-%m")
+    
     except ValueError:
         raise ValueError(f"Invalid date format: {date_str}")
 
-def phrase_and_answer():
-    # Generate a random reference date
+def is_date_in_range(date_str: str, start_year: int=int(START_DATE.split("-")[0]), end_year: int=int(END_DATE.split("-")[0])) -> bool:
+    try:
+        month_str, year_str = date_str.split(",")
+        month_index = MONTHS.index(month_str.strip()) + 1
+        year = int(year_str.strip())
+        
+        date = datetime(year, month_index, 1)
+        start_date = datetime(start_year, 1, 1)
+        end_date = datetime(end_year, 12, 31)
+        
+        return start_date <= date <= end_date
+    except (ValueError, IndexError):
+        return False
+
+def phrase_and_answer() -> Tuple[str, str]:
     ref_month, ref_year = random_month_year()
-    # Generate random years and months to shift
-    years_delta = random.randint(1, 10)
-    months_delta = random.randint(0, 11)
-    # Randomly choose "before" or "after"
-    direction = random.choice(["before", "after"])
-    # Compose the phrase
-    phrase = f"{years_delta} year{'s' if years_delta > 1 else ''} and {months_delta} month{'s' if months_delta != 1 else ''} {direction} {ref_month} {ref_year}"
-    # Compute the referenced date
-    ref_date = datetime(ref_year, MONTHS.index(ref_month) + 1, 1)
+
+    years_delta: int = random.randint(1, 10)
+    months_delta: int = random.randint(0, 11)
+
+    direction: str = random.choice(["before", "after"])
+
+    phrase: str = f"{years_delta} year{'s' if years_delta > 1 else ''} and {months_delta} month{'s' if months_delta != 1 else ''} {direction} {ref_month}, {ref_year}"
+
+    ref_date: datetime = datetime(int(ref_year), MONTHS.index(ref_month) + 1, 1)
+    
     if direction == "before":
         answer_date = ref_date - relativedelta(years=years_delta, months=months_delta)
+    
     else:
         answer_date = ref_date + relativedelta(years=years_delta, months=months_delta)
-    answer = f"{MONTHS[answer_date.month - 1]} {answer_date.year}"
+    
+    answer: str = f"{MONTHS[answer_date.month - 1]}, {answer_date.year}"
+    
     return phrase, answer
 
-def random_date_str():
+def random_date_str() -> str:
     month, year = random_month_year()
-    return f"{month} {year}"
+    
+    return f"{month}, {year}"
 
-def generate_random_date(start_year=1100, end_year=2100):
-    # Generate a random date between the start and end years
-    start_date = datetime(start_year, 1, 1)
-    end_date = datetime(end_year, 12, 31)
-    delta = end_date - start_date
+def generate_random_date(start_year: int=int(START_DATE.split("-")[0]), end_year: int=int(END_DATE.split("-")[0])) -> str:
+    start_date: datetime = datetime(start_year, 1, 1)
+    end_date: datetime = datetime(end_year, 12, 31)
+    delta: timedelta = end_date - start_date
 
-    random_days = random.randint(0, delta.days)
-    random_date = start_date + timedelta(days=random_days)
+    random_days: int = random.randint(0, delta.days)
+    random_date: datetime = start_date + timedelta(days=random_days)
+    
+    if random_date < start_date:
+        random_date = start_date
+    
+    if random_date > end_date:
+        random_date = end_date
 
-    # Format: day month year (e.g., 24 July 2025)
-    return random_date.strftime("%d %B %Y")
+    return random_date.strftime("%Y-%m-%d")
 
-def generate_dataset(n_phrases=100):
-    data = []
+def generate_dataset(n_phrases: int) -> pd.DataFrame:
+    data: List[Dict] = []
+    
     for _ in tqdm(range(n_phrases)):
-        phrase, answer = phrase_and_answer()
+        while True:
+            phrase, answer = phrase_and_answer()
+            if is_date_in_range(answer):
+                break
 
-        # Add the correct answer
         data.append({"sent0": phrase, "sent0_date": generate_random_date(), "sent1": answer, "sent1_date": generate_random_date(), "score": 1.0})
-        # Add 4 random incorrect answers
-        incorrect_dates = set()
+
+        incorrect_dates: set[str] = set()
+        
         while len(incorrect_dates) < 4:
             d = random_date_str()
-            if d != answer:
+            
+            if d != answer and is_date_in_range(d):
                 incorrect_dates.add(d)
+        
         for d in incorrect_dates:
-            data.append({"sent0": phrase, "sent0_date": generate_random_date(), "sent1": d, "sent1_date": generate_random_date(), "ref_date": answer, "score": (1 / compute_distance_dates_same_type(month_year_to_yyyy_mm(answer), month_year_to_yyyy_mm(d), "yyyy-mm"))})
+            data.append({"sent0": phrase, "sent0_date": generate_random_date(), "sent1": d, "sent1_date": generate_random_date(), "score": (1 / compute_distance_dates_same_type(month_year_to_yyyy_mm(answer), month_year_to_yyyy_mm(d), "yyyy-mm"))})
+    
     return pd.DataFrame(data)
 
 if __name__ == "__main__":

@@ -24,14 +24,14 @@ def generate_single_sample(seed_offset: int) -> List[Tuple[str, str, str, str, f
     random.seed(42 + seed_offset)
     output_data: List[Tuple[str, str, str, str, float]] = []
     
-    first_random_temporal_expression: str = generate_random_temporal_expression(probabilities=[0.4, 0.1, 0.1, 0.4], close=False, expression="", current_date="")
+    first_random_temporal_expression: str = generate_random_temporal_expression(probabilities=[0.3, 0.04, 0.01, 0.65], close=False, expression="", current_date="")
     first_random_temporal_expression_text: str = expression_to_text(first_random_temporal_expression)
     
     first_reference_date: str = generate_random_date(START_DATE, END_DATE, granularity_probs=[0.0, 0.0, 0.0, 1.0])
     second_reference_date: str = generate_random_date(START_DATE, END_DATE, granularity_probs=[0.0, 0.0, 0.0, 1.0])
     
     for _ in range(4):
-        second_random_temporal_expression: str = generate_random_temporal_expression(probabilities=[0.3, 0.2, 0.1, 0.4], close=False, expression="", current_date="")
+        second_random_temporal_expression: str = generate_random_temporal_expression(probabilities=[0.3, 0.04, 0.01, 0.65], close=False, expression="", current_date="")
         second_random_temporal_expression_text: str = expression_to_text(second_random_temporal_expression)
         
         try:
