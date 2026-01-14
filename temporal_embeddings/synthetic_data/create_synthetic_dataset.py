@@ -95,7 +95,7 @@ def create_synthetic_dataset(output_file_path: Path, size: int) -> None:
         output_data.extend(result)
 
     df = pd.DataFrame(output_data, columns=[
-        "first_expression", "first_reference_date", "second_expression", "second_reference_date", "similarity"
+        "sent0", "sent0_date", "sent1", "sent1_date", "score"
     ])
 
     if output_file_path:
@@ -105,5 +105,5 @@ def create_synthetic_dataset(output_file_path: Path, size: int) -> None:
     else:
         raise ValueError("Output file path must be provided.")
 
-    count = (df["similarity"] > 0.9).sum()
+    count = (df["score"] > 0.9).sum()
     print(f"Number of pairs with similarity > 0.9: {count} out of {len(df)}")
