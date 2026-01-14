@@ -22,6 +22,9 @@ class Inference:
         if model_name in ["all-minilm-l6-v2", "all-minilm-l6-v2-full"]:
             self.model_name = "sentence-transformers/all-MiniLM-L6-v2"
 
+        elif model_name in ["prajjwal1/bert-tiny", "prajjwal1/bert-tiny-full"]:
+            self.model_name = "prajjwal1/bert-tiny"
+
         self.model: GaussModel = GaussModel(self.model_name, False).eval().to(INFERENCE_DEVICE)
         self.model.load_state_dict(torch.load(str(self.model_path), map_location=torch.device(INFERENCE_DEVICE)))
 
