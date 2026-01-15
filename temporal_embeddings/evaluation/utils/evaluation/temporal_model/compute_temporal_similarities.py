@@ -9,7 +9,7 @@ import torch
 from temporal_embeddings.evaluation.utils.evaluation.temporal_model.inference import Inference
 from temporal_embeddings.evaluation.utils.data.random_paragraphs import add_negative_samples
 
-def compute_temporal_similarities(temporal_model_name: str, temporal_model_path: Path, batch_size: int, max_seq_len: int, benchmark_file_path: Path, temporal_cache_file_path: Path, temporal_similarities_file_path: Path, num_negative_samples: int = 0, reference_date: str = "2026-01-13") -> pd.DataFrame:        
+def compute_temporal_similarities(temporal_model_name: str, temporal_model_path: Path, batch_size: int, max_seq_len: int, benchmark_file_path: Path, temporal_cache_file_path: Path, temporal_similarities_file_path: Path, num_negative_samples: int = 0, reference_date: str = "2021-11-09") -> pd.DataFrame:        
         print("Starting temporal model embeddings computation...")
         print(f"Using reference date: {reference_date}")
 
