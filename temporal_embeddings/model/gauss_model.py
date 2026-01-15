@@ -24,25 +24,45 @@ class GaussModel(nn.Module):
 
         self.hidden_size: int = self.backbone.config.hidden_size
 
-        self.w_mu = nn.Linear(self.hidden_size + POSITIONAL_ENCODING_DIM, self.hidden_size)
-        self.w_var = nn.Linear(self.hidden_size + POSITIONAL_ENCODING_DIM, self.hidden_size)
-        self.activation = nn.Tanh()
+        # Multi-layer projection for better capacity
+        self.temporal_projection = nn.Sequential(
+            nn.Linear(self.hidden_size + POSITIONAL_ENCODING_DIM, self.hidden_size * 2),
+            nn.LayerNorm(self.hidden_size * 2),
+            nn.Tanh(),
+            nn.Dropout(0.1),
+            nn.Linear(self.hidden_size * 2, self.hidden_size)
+        )
+        
+        # Separate heads for mu and log_var
+        self.mu_head = nn.Sequential(
+            nn.Linear(self.hidden_size, self.hidden_size),
+            nn.Tanh()
+        )
+        
+        self.log_var_head = nn.Sequential(
+            nn.Linear(self.hidden_size, self.hidden_size),
+            nn.Softplus()  # Ensures positive variance
+        )
 
     def forward(self, input_ids, attention_mask, dates, **_) -> GaussOutput:
         outputs: BaseModelOutput = self.backbone(input_ids=input_ids, attention_mask=attention_mask)
 
         emb = self.mean_pooling(outputs, attention_mask)
-        # emb = outputs.last_hidden_state[:, 0]
         emb_dates = torch.cat((emb, dates), dim=-1)
 
-        mu = self.w_mu(emb_dates)
-        mu = self.activation(mu)
-
-        log_var = self.w_var(emb_dates)
+        # Shared temporal projection
+        temporal_features = self.temporal_projection(emb_dates)
+        
+        # Separate mu and variance computation
+        mu = self.mu_head(temporal_features)
+        log_var = self.log_var_head(temporal_features)
+        
+        # Clamp log_var to prevent numerical instability
+        log_var = torch.clamp(log_var, min=-10, max=10)
         std = torch.exp(0.5 * log_var)
 
         return GaussOutput(mu=mu, std=std)
-    
+
     def mean_pooling(self, model_output, attention_mask):
         # token_embeddings = model_output[0] #First element of model_output contains all token embeddings
         token_embeddings = model_output.last_hidden_state
