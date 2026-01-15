@@ -125,7 +125,7 @@ def main(data_fraction: float,
             if current_step % num_eval_steps == 0:
                 execution.model.eval()
 
-                checkpoint_path: Path = Path(output_directory_path) / Path(f"checkpoint_step_{current_step}.pth")
+                checkpoint_path: Path = Path(output_directory_path) / Path(f"trained_models/model_{model_name.replace('/', '_')}_{current_time}_{current_step}.pth")
                 
                 torch.save({
                     "step": current_step,

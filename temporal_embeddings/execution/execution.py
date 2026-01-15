@@ -69,12 +69,12 @@ class Execution():
             no_decay = {"bias", "LayerNorm.weight"}
             optimizer_grouped_parameters = [
                 {
-                    "params": [param for name, param in model.named_parameters() if name not in no_decay
+                    "params": [param for name, param in model.named_parameters() if name not in no_decay and param.requires_grad
                     ],
                     "weight_decay": self.parameters["weight_decay"],
                 },
                 {
-                    "params": [param for name, param in model.named_parameters() if name in no_decay
+                    "params": [param for name, param in model.named_parameters() if name in no_decay and param.requires_grad
                     ],
                     "weight_decay": 0.0,
                 },

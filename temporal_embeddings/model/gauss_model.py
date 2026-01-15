@@ -19,6 +19,10 @@ class GaussModel(nn.Module):
 
         self.backbone: PreTrainedModel = AutoModel.from_pretrained(model_name)
 
+        # Freeze backbone weights
+        for param in self.backbone.parameters():
+            param.requires_grad = False
+
         if gradient_checkpointing:
             self.backbone.gradient_checkpointing_enable()
 
@@ -45,7 +49,8 @@ class GaussModel(nn.Module):
         )
 
     def forward(self, input_ids, attention_mask, dates, **_) -> GaussOutput:
-        outputs: BaseModelOutput = self.backbone(input_ids=input_ids, attention_mask=attention_mask)
+        with torch.no_grad():
+            outputs: BaseModelOutput = self.backbone(input_ids=input_ids, attention_mask=attention_mask)
 
         emb = self.mean_pooling(outputs, attention_mask)
         emb_dates = torch.cat((emb, dates), dim=-1)
