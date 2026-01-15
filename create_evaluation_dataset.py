@@ -3,6 +3,8 @@ from pathlib import Path
 import argparse
 import random
 from typing import List
+from datetime import datetime
+from dateutil.relativedelta import relativedelta
 
 def create_evaluation_dataset(dataset_name):
     if dataset_name.lower().startswith("menat_qa"):
@@ -180,22 +182,26 @@ def create_evaluation_dataset(dataset_name):
         
         for item in data:
             paragraphs = []
-
-            correct_para = item["text_answers"]["text"][0]
-            paragraphs.append(correct_para)
             
-            for _ in range(200):
-                random_item = random.choice(data)
-                para = random_item["text_answers"]["text"][0]
-                
-                if para not in paragraphs:
-                    paragraphs.append(para)
+            answer_date_str = item["text_answers"]["text"][0]
+            paragraphs.append(answer_date_str)
+
+            question_date_str = item["date"]
+            question_date_obj = datetime.strptime(question_date_str, "%B %d, %Y")
+            
+            question = item["question"]
+            
+            for offset_months in range(-2, 3, 1):
+                neighbor_date = question_date_obj + relativedelta(months=offset_months)
+                neighbor_str = neighbor_date.strftime("%b, %Y")
+                neighbor_str = f"{neighbor_str.split(', ')[0]}, {neighbor_str.split(', ')[1]}"
+                paragraphs.append(neighbor_str)
             
             random.shuffle(paragraphs)
-            correct_idx = paragraphs.index(correct_para)
+            correct_idx = paragraphs.index(answer_date_str)
             
             entry = {
-                "question": item["question"],
+                "question": question,
                 "paragraphs": paragraphs,
                 "answer": [correct_idx]
             }
