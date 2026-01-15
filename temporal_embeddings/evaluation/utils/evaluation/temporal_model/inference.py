@@ -25,6 +25,9 @@ class Inference:
         elif model_name in ["prajjwal1/bert-tiny", "prajjwal1/bert-tiny-full"]:
             self.model_name = "prajjwal1/bert-tiny"
 
+        elif model_name in ["intfloat/e5-base-v2", "intfloat/e5-base-v2-full"]:
+            self.model_name = "intfloat/e5-base-v2"
+
         self.model: GaussModel = GaussModel(self.model_name, False).eval().to(INFERENCE_DEVICE)
         self.model.load_state_dict(torch.load(str(self.model_path), map_location=torch.device(INFERENCE_DEVICE)))
 
