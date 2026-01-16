@@ -32,9 +32,7 @@ class GaussModel(nn.Module):
         self.temporal_projection = nn.Sequential(
             nn.Linear(self.hidden_size + POSITIONAL_ENCODING_DIM, self.hidden_size * 2),
             nn.LayerNorm(self.hidden_size * 2),
-            nn.Tanh(),
-            nn.Dropout(0.1),
-            nn.Linear(self.hidden_size * 2, self.hidden_size)
+            nn.ReLU()
         )
         
         # Separate heads for mu and log_var
@@ -43,10 +41,7 @@ class GaussModel(nn.Module):
             nn.Tanh()
         )
         
-        self.log_var_head = nn.Sequential(
-            nn.Linear(self.hidden_size, self.hidden_size),
-            nn.Softplus()  # Ensures positive variance
-        )
+        self.log_var_head = nn.Linear(self.hidden_size, self.hidden_size)
 
     def forward(self, input_ids, attention_mask, dates, **_) -> GaussOutput:
         with torch.no_grad():
@@ -60,11 +55,9 @@ class GaussModel(nn.Module):
         
         # Separate mu and variance computation
         mu = self.mu_head(temporal_features)
-        log_var = self.log_var_head(temporal_features)
         
-        # Clamp log_var to prevent numerical instability
-        log_var = torch.clamp(log_var, min=-10, max=10)
-        std = torch.exp(0.5 * log_var)
+        log_var = self.log_var_head(temporal_features)
+        std = torch.sqrt(log_var.exp())
 
         return GaussOutput(mu=mu, std=std)
 
