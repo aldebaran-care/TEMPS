@@ -8,10 +8,10 @@ POSITIONAL_ENCODING_DIM: int = 32
 SPECIAL_TOKENS: bool = True
 
 # Training Hyperparameters
-LR: float = 3e-5
-WEIGHT_DECAY: float = 2e-4
+LR: float = 3e-4
+WEIGHT_DECAY: float = 0.01
 EPOCHS: int = 1
-NUM_WARMUP_RATIO: float = 0.1
+NUM_WARMUP_RATIO: float = 0.05
 TEMPERATURE: float = 0.05
 NUM_EVAL_STEPS: int = 1000
 
