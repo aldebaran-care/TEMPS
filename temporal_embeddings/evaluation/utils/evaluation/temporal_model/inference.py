@@ -26,7 +26,12 @@ class Inference:
             self.model_name = "prajjwal1/bert-tiny"
 
         self.model: GaussModel = GaussModel(self.model_name, False).eval().to(INFERENCE_DEVICE)
-        self.model.load_state_dict(torch.load(str(self.model_path), map_location=torch.device(INFERENCE_DEVICE)))
+
+        checkpoint = torch.load(str(self.model_path), map_location=torch.device(INFERENCE_DEVICE))
+        if "model_state_dict" in checkpoint:
+            self.model.load_state_dict(checkpoint["model_state_dict"])
+        else:
+            self.model.load_state_dict(checkpoint)
 
         self.tokenizer: PreTrainedTokenizer = AutoTokenizer.from_pretrained(self.model_name, model_max_length = self.max_seq_len, use_fast = False)
 
