@@ -6,6 +6,9 @@ from typing import List
 from datetime import datetime
 from dateutil.relativedelta import relativedelta
 
+from temporal_embeddings.evaluation.benchmarks.time_sensitive_qa import create_time_sensitive_qa_benchmark
+from temporal_embeddings.evaluation.benchmarks.ts_retriever import create_ts_retriever_benchmark
+
 def create_evaluation_dataset(dataset_name):
     if dataset_name.lower().startswith("menat_qa"):
         main_folder = Path("data/evaluation/menat_qa")
@@ -84,89 +87,10 @@ def create_evaluation_dataset(dataset_name):
             print(f"Processed filtered dataset saved to: {output_file}")
 
     elif dataset_name.lower().startswith("ts_retriever"):
-        base = Path("data/evaluation/ts_retriever")
-        query_path = base / "query.json"
-        doc_path = base / "doc.json"
-        output_path = base / "processed_ts_retriever.json"
-
-        with query_path.open("r", encoding="utf-8") as f:
-            questions = [q[:400] for q in json.load(f)]
-
-        with doc_path.open("r", encoding="utf-8") as f:
-            paragraphs = [p[:400] for p in json.load(f)]
-
-        output = []
-
-        for _, q in enumerate(questions):
-            answer_idx = []
-            
-            for positive_text in q["positive_text"]:
-                answer_idx.append(paragraphs.index(positive_text))
-
-            selected_paragraphs = [paragraphs[i] for i in answer_idx]
-
-            other_indexes = [i for i in range(len(paragraphs)) if i not in answer_idx]
-
-            sampled_indexes = random.sample(other_indexes, min(20, len(other_indexes)))
-            selected_paragraphs += [paragraphs[i] for i in sampled_indexes]
-
-            random.shuffle(selected_paragraphs)
-
-            answer_idx = []
-            for positive_text in q["positive_text"]:
-                answer_idx.append(selected_paragraphs.index(positive_text))
-
-            entry = {
-                "question": q["query"],
-                "paragraphs": selected_paragraphs,
-                "answer": answer_idx,
-            }
-
-            output.append(entry)
-
-        with output_path.open("w", encoding="utf-8") as f:
-            json.dump(output, f, ensure_ascii=False, indent=2)
-
-        print(f"Processed dataset saved to: {output_path}")
+        create_ts_retriever_benchmark()
 
     elif dataset_name.lower().startswith("time_sensitive_qa"):
-        main_folder = Path("data/evaluation/time_sensitive_qa")
-        input_path = main_folder / "human_annotated_test.json"
-        output_file = main_folder / "processed_human_annotated_test.json"
-
-        main_folder.mkdir(parents=True, exist_ok=True)
-
-        with input_path.open("r", encoding="utf-8") as infile:
-            data = json.load(infile)
-
-        processed_data = []
-
-        all_paragraphs = set()
-        
-        for item in data:
-            paragraphs = [p[:400] for p in item.get("paras", [])]
-
-            all_paragraphs.update(paragraphs)
-            
-            for q_pair in item.get("questions", []):
-                question_text = q_pair[0][:400]
-                answers = q_pair[1]
-                
-                for ans in answers:
-                    para_idx = ans.get("para", 0)
-                    
-                    entry = {
-                        "question": question_text,
-                        "paragraphs": paragraphs + fetch_random_paragraphs(list(all_paragraphs - set(paragraphs)), 10),
-                        "answer": [para_idx]
-                    }
-                    
-                    processed_data.append(entry)
-
-        with output_file.open("w", encoding="utf-8") as outfile:
-            json.dump(processed_data, outfile, indent=2, ensure_ascii=False)
-
-        print(f"Processed dataset saved to: {output_file}")
+        create_time_sensitive_qa_benchmark()
 
     elif dataset_name.lower().startswith("temp_reason_l1"):
         main_folder = Path("data/evaluation/temp_reason_l1")
