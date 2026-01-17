@@ -1,5 +1,6 @@
 from tqdm import tqdm
 import torch
+from torch.nn.parallel import DistributedDataParallel as DDP
 from torch.utils.data import DataLoader
 from transformers import AutoTokenizer
 from transformers.tokenization_utils import BatchEncoding, PreTrainedTokenizer
@@ -16,7 +17,7 @@ from temporal_embeddings.utils.similarity import asymmetrical_kl_sim
 from temporal_embeddings.utils.positional_encoding import positional_encoding
 
 class Execution():
-    def __init__(self, data_fraction: float, model_name: str, batch_size: int, lr: float, weight_decay: float, epochs: int, num_warmup_ratio: float, temperature: float, num_eval_steps: int, input_file_path: str, output_directory_path: str, continue_training: bool = False, model_path: str = None) -> None:
+    def __init__(self, data_fraction: float, model_name: str, batch_size: int, lr: float, weight_decay: float, epochs: int, num_warmup_ratio: float, temperature: float, num_eval_steps: int, input_file_path: str, output_directory_path: str, continue_training: bool = False, model_path: str = None, local_rank: int = 0, rank: int = 0, world_size: int = 1) -> None:
         self.parameters = {
             "model_name": model_name,
             "batch_size": batch_size,
@@ -30,20 +31,25 @@ class Execution():
             "output_directory_path": output_directory_path,
         }
 
-        self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        self.local_rank = local_rank
+        self.rank = rank
+        self.world_size = world_size
+        self.device = torch.device(f"cuda:{local_rank}")
 
         self.model: GaussModel = GaussModel(self.parameters["model_name"], False)
-        self.model = self.model.eval()
         self.model = self.model.to(self.device)
         
-        if continue_training:
-            self.model.load_state_dict(torch.load(model_path))
-            self.model = self.model.to(self.device)
-            self.model = self.model.eval()
+        if continue_training and model_path:
+            state_dict = torch.load(model_path, map_location=self.device)
+            self.model.load_state_dict(state_dict)
+        
+        # Wrap model with DDP
+        self.model = DDP(self.model, device_ids=[local_rank], output_device=local_rank, find_unused_parameters=False)
+        self.model.eval()
         
         self.tokenizer: PreTrainedTokenizer = AutoTokenizer.from_pretrained(self.parameters["model_name"], model_max_length=MAX_SEQ_LEN, use_fast=True)
 
-        self.gauss_data: GaussData = GaussData(self.parameters["input_file_path"], self.tokenizer, self.parameters["batch_size"], data_fraction)
+        self.gauss_data: GaussData = GaussData(self.parameters["input_file_path"], self.tokenizer, self.parameters["batch_size"], data_fraction, rank=rank, world_size=world_size)
 
         self.optimizer, self.lr_scheduler = self.create_optimizer(model=self.model, train_steps_per_epoch=len(self.gauss_data.train_dataloader))
 
@@ -95,7 +101,9 @@ class Execution():
 
     @torch.inference_mode()
     def evaluator(self, split: str) -> float:
-        self.model.eval()
+        # Use the underlying model for evaluation (not DDP wrapper)
+        model = self.model.module if isinstance(self.model, DDP) else self.model
+        model.eval()
 
         sent0_output: list[GaussOutput] = []
         sent1_output: list[GaussOutput] = []
@@ -111,14 +119,14 @@ class Execution():
         elif split == "test":
             data_loader: DataLoader = self.gauss_data.test_dataloader
 
-        for batch in tqdm(data_loader, desc=f"Evaluating {split} split"):
-            sent0_out = self.model.forward(
+        for batch in tqdm(data_loader, desc=f"Evaluating {split} split", disable=(self.rank != 0)):
+            sent0_out = model.forward(
                 input_ids=batch.sent0.input_ids.to(self.device), 
                 attention_mask=batch.sent0.attention_mask.to(self.device), 
                 dates=batch.sent0_date.to(self.device)
             )
             
-            sent1_out = self.model.forward(
+            sent1_out = model.forward(
                 input_ids=batch.sent1.input_ids.to(self.device), 
                 attention_mask=batch.sent1.attention_mask.to(self.device), 
                 dates=batch.sent1_date.to(self.device)
@@ -140,14 +148,15 @@ class Execution():
     
     @torch.inference_mode()
     def encode_fn(self, sentences: list[str], **_) -> GaussOutput:
-        self.model = self.model.eval()
+        model = self.model.module if isinstance(self.model, DDP) else self.model
+        model.eval()
 
         data_loader = DataLoader(sentences, collate_fn=self.tokenize, batch_size=self.parameters["batch_size"], shuffle=False, num_workers=NUM_WORKERS, pin_memory=True, drop_last=False)
 
         output: list[GaussOutput] = []
         for batch in data_loader:
             batch_device = {k: v.to(self.device) for k, v in batch.items()}
-            out = self.model.forward(**batch_device)
+            out = model.forward(**batch_device)
             output.append(out)
 
         output = GaussOutput(
@@ -167,7 +176,8 @@ class Execution():
         )
     
     def clone_state_dict(self) -> dict:
-        return {k: v.detach().clone().cpu() for k, v in self.model.state_dict().items()}
+        model = self.model.module if isinstance(self.model, DDP) else self.model
+        return {k: v.detach().clone().cpu() for k, v in model.state_dict().items()}
     
     def sim_fn(self, sent0: list[str], sent1: list[str]) -> list[float]:
         sent0: GaussOutput = self.encode_fn(sent0)

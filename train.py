@@ -2,8 +2,10 @@ import argparse
 import json
 from datetime import datetime
 from pathlib import Path
+import os
 
 import torch
+import torch.distributed as dist
 from tqdm import trange, tqdm
 from torch.utils.tensorboard import SummaryWriter
 
@@ -19,6 +21,17 @@ from temporal_embeddings.utils.save import save_json
 from temporal_embeddings.utils.loss.cosent_loss import CoSentLoss
 from temporal_embeddings.utils.os.folder_management import create_folders
 
+def setup_ddp():
+    """Initialize distributed training"""
+    dist.init_process_group(backend="nccl")
+    local_rank = int(os.environ["LOCAL_RANK"])
+    torch.cuda.set_device(local_rank)
+    return local_rank, dist.get_rank(), dist.get_world_size()
+
+def cleanup_ddp():
+    """Cleanup distributed training"""
+    dist.destroy_process_group()
+
 def main(data_fraction: float,
          model_name: str,
          batch_size: int,
@@ -33,33 +46,43 @@ def main(data_fraction: float,
          continue_training: bool,
          model_path: str) -> None:
     
+    # Setup DDP
+    local_rank, rank, world_size = setup_ddp()
+    is_main_process = (rank == 0)
+    
     set_seed(seed=SEED)
-    current_time = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
-    log_dir_path: str = f"logs/runs/{model_name}_{current_time}"
-    writer = SummaryWriter(log_dir=log_dir_path)
     
-    parameters = {
-        "model_name": model_name,
-        "batch_size": batch_size,
-        "learning_rate": lr,
-        "weight_decay": weight_decay,
-        "epochs": epochs,
-        "num_warmup_ratio": num_warmup_ratio,
-        "temperature": temperature,
-        "num_eval_steps": num_eval_steps,
-        "input_file_path": str(input_file_path),
-        "output_directory_path": str(output_directory_path),
-        "data_fraction": data_fraction,
-        "continue_training": continue_training,
-        "model_path": str(model_path) if continue_training else None,
-    }
+    # Only create writer and log on main process
+    writer = None
+    if is_main_process:
+        current_time = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+        log_dir_path: str = f"logs/runs/{model_name}_{current_time}"
+        writer = SummaryWriter(log_dir=log_dir_path)
+        
+        parameters = {
+            "model_name": model_name,
+            "batch_size": batch_size,
+            "learning_rate": lr,
+            "weight_decay": weight_decay,
+            "epochs": epochs,
+            "num_warmup_ratio": num_warmup_ratio,
+            "temperature": temperature,
+            "num_eval_steps": num_eval_steps,
+            "input_file_path": str(input_file_path),
+            "output_directory_path": str(output_directory_path),
+            "data_fraction": data_fraction,
+            "continue_training": continue_training,
+            "model_path": str(model_path) if continue_training else None,
+            "world_size": world_size,
+        }
+        
+        with open(f"{log_dir_path}/parameters.json", "w") as param_file:
+            json.dump(parameters, param_file, indent=4)
+        
+        print("Parameters logged in:", f"{log_dir_path}/parameters.json")
     
-    with open(f"{log_dir_path}/parameters.json", "w") as param_file:
-        json.dump(parameters, param_file, indent=4)
-    
-    print("Parameters logged in:", f"{log_dir_path}/parameters.json")
-    
-    print("Load the execution object")
+    if is_main_process:
+        print("Load the execution object")
     execution = Execution(data_fraction=data_fraction, 
                           model_name=model_name, 
                           batch_size=batch_size, 
@@ -72,10 +95,14 @@ def main(data_fraction: float,
                           input_file_path=input_file_path, 
                           output_directory_path=output_directory_path,
                           continue_training=continue_training,
-                          model_path=model_path)
+                          model_path=model_path,
+                          local_rank=local_rank,
+                          rank=rank,
+                          world_size=world_size)
 
-    print("Compute the first dev score")
-    best_dev_score = execution.evaluator("val")
+    if is_main_process:
+        print("Compute the first dev score")
+    best_dev_score = execution.evaluator("val") if is_main_process else 0.0
     best_epoch, best_step = 0, 0
     val_metrics = {
         "epoch": best_epoch,
@@ -83,37 +110,41 @@ def main(data_fraction: float,
         "loss": float("inf"),
         "dev_score": best_dev_score,
     }
-    execution.log(val_metrics)
-    best_state_dict = execution.clone_state_dict()
+    if is_main_process:
+        execution.log(val_metrics)
+    best_state_dict = execution.clone_state_dict() if is_main_process else None
     
     current_step = 0
+    current_time = datetime.now().strftime("%Y-%m-%d_%H-%M-%S") if is_main_process else None
 
-    for epoch in trange(epochs, leave=False, dynamic_ncols=True, desc="Epoch"):
+    for epoch in trange(epochs, leave=False, dynamic_ncols=True, desc="Epoch", disable=not is_main_process):
         train_losses = []
         execution.model.train()
+        
+        # Set epoch for DistributedSampler
+        execution.gauss_data.train_dataloader.sampler.set_epoch(epoch)
 
-        for batch in tqdm(execution.gauss_data.train_dataloader, total=len(execution.gauss_data.train_dataloader), dynamic_ncols=True, leave=False, desc="Step"):
+        for batch in tqdm(execution.gauss_data.train_dataloader, total=len(execution.gauss_data.train_dataloader), dynamic_ncols=True, leave=False, desc="Step", disable=not is_main_process):
             current_step += 1
 
             with torch.autograd.set_detect_anomaly(True):
             
-                # Move tensors to device without unnecessary clone/detach operations
                 sent0_out: GaussOutput = execution.model.forward(
-                    input_ids=batch.sent0.input_ids.to(DEVICE), 
-                    attention_mask=batch.sent0.attention_mask.to(DEVICE), 
-                    dates=batch.sent0_date.to(DEVICE)
+                    input_ids=batch.sent0.input_ids.to(local_rank), 
+                    attention_mask=batch.sent0.attention_mask.to(local_rank), 
+                    dates=batch.sent0_date.to(local_rank)
                 )
 
                 sent1_out: GaussOutput = execution.model.forward(
-                    input_ids=batch.sent1.input_ids.to(DEVICE), 
-                    attention_mask=batch.sent1.attention_mask.to(DEVICE), 
-                    dates=batch.sent1_date.to(DEVICE)
+                    input_ids=batch.sent1.input_ids.to(local_rank), 
+                    attention_mask=batch.sent1.attention_mask.to(local_rank), 
+                    dates=batch.sent1_date.to(local_rank)
                 )
 
                 sim_mat: torch.Tensor = asymmetrical_kl_sim(sent0_out.mu, sent0_out.std, sent1_out.mu, sent1_out.std)
                 
                 loss_func = CoSentLoss()
-                loss = loss_func(sim_mat, batch.score.to(DEVICE))
+                loss = loss_func(sim_mat, batch.score.to(local_rank))
 
                 train_losses.append(loss.item())
 
@@ -122,7 +153,7 @@ def main(data_fraction: float,
                 execution.optimizer.step()
                 execution.lr_scheduler.step()
             
-            if current_step % num_eval_steps == 0:
+            if current_step % num_eval_steps == 0 and is_main_process:
                 execution.model.eval()
 
                 checkpoint_path: Path = Path(output_directory_path) / Path(f"trained_models/model_{model_name.replace('/', '_')}_{current_time}_{current_step}.pth")
@@ -130,7 +161,7 @@ def main(data_fraction: float,
                 torch.save({
                     "step": current_step,
                     "epoch": epoch,
-                    "model_state_dict": execution.model.state_dict(),
+                    "model_state_dict": execution.model.module.state_dict(),  # Save underlying model
                     "optimizer_state_dict": execution.optimizer.state_dict(),
                     "lr_scheduler_state_dict": execution.lr_scheduler.state_dict(),
                     "best_dev_score": best_dev_score,
@@ -172,31 +203,37 @@ def main(data_fraction: float,
                 train_losses = []
 
                 execution.model.train()
+            
+            # Synchronize all processes
+            dist.barrier()
 
-    dev_metrics = {
-        "best-epoch": best_epoch,
-        "best-step": best_step,
-        "best-dev-auc": best_dev_score,
-    }
-    dev_metrics_path: Path = Path(f"{output_directory_path}/metrics/dev_metrics_{model_name.replace('/', '_')}_{current_time}.json")
-    create_folders([dev_metrics_path.parent])
-    save_json(dev_metrics, dev_metrics_path)
-    print("Dev metrics saved in:", dev_metrics_path)
+    if is_main_process:
+        dev_metrics = {
+            "best-epoch": best_epoch,
+            "best-step": best_step,
+            "best-dev-auc": best_dev_score,
+        }
+        dev_metrics_path: Path = Path(f"{output_directory_path}/metrics/dev_metrics_{model_name.replace('/', '_')}_{current_time}.json")
+        create_folders([dev_metrics_path.parent])
+        save_json(dev_metrics, dev_metrics_path)
+        print("Dev metrics saved in:", dev_metrics_path)
 
-    execution.model.load_state_dict(best_state_dict)
-    model_path = f"{output_directory_path}/trained_models/model_{model_name.replace('/', '_')}_{current_time}.pth"
-    create_folders([Path(model_path).parent])
-    torch.save(execution.model.state_dict(), model_path)
-    print("Model saved in:", model_path)
-    execution.model.eval().to(DEVICE)
+        execution.model.module.load_state_dict(best_state_dict)  # Load into underlying model
+        model_path = f"{output_directory_path}/trained_models/model_{model_name.replace('/', '_')}_{current_time}.pth"
+        create_folders([Path(model_path).parent])
+        torch.save(execution.model.module.state_dict(), model_path)
+        print("Model saved in:", model_path)
+        execution.model.eval()
 
-    metrics = execution.evaluator(split="test")
-    metrics_path: Path = Path(f"{output_directory_path}/metrics/metrics_{model_name.replace('/', '_')}_{current_time}.json")
-    create_folders([metrics_path.parent])
-    save_json(metrics, metrics_path)
-    print("Train metrics saved in:", metrics_path)
+        metrics = execution.evaluator(split="test")
+        metrics_path: Path = Path(f"{output_directory_path}/metrics/metrics_{model_name.replace('/', '_')}_{current_time}.json")
+        create_folders([metrics_path.parent])
+        save_json(metrics, metrics_path)
+        print("Train metrics saved in:", metrics_path)
 
-    writer.close()
+        writer.close()
+    
+    cleanup_ddp()
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Train the temporal embeddings model.")
