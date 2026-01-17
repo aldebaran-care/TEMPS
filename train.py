@@ -127,31 +127,29 @@ def main(data_fraction: float,
         for batch in tqdm(execution.gauss_data.train_dataloader, total=len(execution.gauss_data.train_dataloader), dynamic_ncols=True, leave=False, desc="Step", disable=not is_main_process):
             current_step += 1
 
-            with torch.autograd.set_detect_anomaly(True):
+            sent0_out: GaussOutput = execution.model.forward(
+                input_ids=batch.sent0.input_ids.to(local_rank), 
+                attention_mask=batch.sent0.attention_mask.to(local_rank), 
+                dates=batch.sent0_date.to(local_rank)
+            )
+
+            sent1_out: GaussOutput = execution.model.forward(
+                input_ids=batch.sent1.input_ids.to(local_rank), 
+                attention_mask=batch.sent1.attention_mask.to(local_rank), 
+                dates=batch.sent1_date.to(local_rank)
+            )
+
+            sim_mat: torch.Tensor = asymmetrical_kl_sim(sent0_out.mu, sent0_out.std, sent1_out.mu, sent1_out.std)
             
-                sent0_out: GaussOutput = execution.model.forward(
-                    input_ids=batch.sent0.input_ids.to(local_rank), 
-                    attention_mask=batch.sent0.attention_mask.to(local_rank), 
-                    dates=batch.sent0_date.to(local_rank)
-                )
+            loss_func = CoSentLoss()
+            loss = loss_func(sim_mat, batch.score.to(local_rank))
 
-                sent1_out: GaussOutput = execution.model.forward(
-                    input_ids=batch.sent1.input_ids.to(local_rank), 
-                    attention_mask=batch.sent1.attention_mask.to(local_rank), 
-                    dates=batch.sent1_date.to(local_rank)
-                )
+            train_losses.append(loss.item())
 
-                sim_mat: torch.Tensor = asymmetrical_kl_sim(sent0_out.mu, sent0_out.std, sent1_out.mu, sent1_out.std)
-                
-                loss_func = CoSentLoss()
-                loss = loss_func(sim_mat, batch.score.to(local_rank))
-
-                train_losses.append(loss.item())
-
-                execution.optimizer.zero_grad()
-                loss.backward()
-                execution.optimizer.step()
-                execution.lr_scheduler.step()
+            execution.optimizer.zero_grad()
+            loss.backward()
+            execution.optimizer.step()
+            execution.lr_scheduler.step()
             
             if current_step % num_eval_steps == 0 and is_main_process:
                 execution.model.eval()
