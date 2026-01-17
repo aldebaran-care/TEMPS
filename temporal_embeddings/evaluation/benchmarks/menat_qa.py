@@ -45,7 +45,7 @@ def create_menat_qa_benchmark(dataset_name: str) -> None:
         if dataset_name.lower() == "menat_qa_narrow" and item.get("type") != "narrow":
             continue
 
-        question: str = item.get("question", "")
+        question: str = item.get("updated_question", "")
         
         paragraphs: List[str] = [ctx["text"] for ctx in item["context"]]
         if len(paragraphs) <= 3:
