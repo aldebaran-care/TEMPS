@@ -3,7 +3,7 @@ from pathlib import Path
 
 from temporal_embeddings.evaluation.benchmarks.utils.fetch_random_paragraphs import fetch_random_paragraphs
 
-def create_time_sensitive_qa_benchmark() -> None:
+def create_time_sensitive_qa_benchmark(add_negative_samples: bool) -> None:
     main_folder: Path = Path("data/evaluation/time_sensitive_qa")
     input_path: Path = main_folder / "human_annotated_test.json"
     output_file: Path = main_folder / "processed_human_annotated_test.json"
@@ -31,7 +31,7 @@ def create_time_sensitive_qa_benchmark() -> None:
                 
                 entry = {
                     "question": question_text,
-                    "paragraphs": paragraphs + fetch_random_paragraphs(question_text, list(all_paragraphs - set(paragraphs)), 10, use_bm25=True),
+                    "paragraphs": paragraphs + fetch_random_paragraphs(question_text, list(all_paragraphs - set(paragraphs)), 10, use_bm25=True) if add_negative_samples else paragraphs,
                     "answer": [para_idx]
                 }
                 

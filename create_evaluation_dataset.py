@@ -6,20 +6,21 @@ from temporal_embeddings.evaluation.benchmarks.temp_reason_l1 import create_temp
 from temporal_embeddings.evaluation.benchmarks.menat_qa import create_menat_qa_benchmark
 
 def create_evaluation_dataset(dataset_name):
-    if dataset_name.lower().startswith("menat_qa"):
+    if dataset_name.lower().startswith("time_sensitive_qa"):
+        create_time_sensitive_qa_benchmark(add_negative_samples=False)
+    
+    elif dataset_name.lower().startswith("menat_qa"):
         create_menat_qa_benchmark(dataset_name)
 
     elif dataset_name.lower().startswith("ts_retriever"):
         create_ts_retriever_benchmark()
 
-    elif dataset_name.lower().startswith("time_sensitive_qa"):
-        create_time_sensitive_qa_benchmark()
 
     elif dataset_name.lower().startswith("temp_reason_l1"):
         create_temp_reason_l1_benchmark()
         
     else:
-        print(f"Dataset '{dataset_name}' is not supported.")
+        raise ValueError("Unsupported dataset name.")
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Process evaluation dataset.")
