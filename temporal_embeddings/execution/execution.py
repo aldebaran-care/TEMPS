@@ -63,10 +63,8 @@ class Execution():
             if 'optimizer_state_dict' in checkpoint_data:
                 try:
                     self.optimizer.load_state_dict(checkpoint_data['optimizer_state_dict'])
-                    
-                    # Force update the learning rate to the new configuration
                     for param_group in self.optimizer.param_groups:
-                        param_group['lr'] = self.parameters["learning_rate"]
+                        param_group["initial_lr"] = self.parameters["learning_rate"]
                         
                     if self.rank == 0:
                         print("Loaded optimizer state from checkpoint and reset learning rate")
@@ -118,6 +116,8 @@ class Execution():
             ]
 
             optimizer = torch.optim.AdamW(optimizer_grouped_parameters, lr=self.parameters["learning_rate"])
+            for param_group in optimizer.param_groups:
+                param_group["initial_lr"] = self.parameters["learning_rate"]
 
             num_training_steps = train_steps_per_epoch * self.parameters["epochs"]
             num_warmup_steps = int(num_training_steps * self.parameters["num_warmup_ratio"])

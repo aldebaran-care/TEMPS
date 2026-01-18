@@ -3,6 +3,7 @@ import json
 from datetime import datetime
 from pathlib import Path
 import os
+from typing import Tuple
 
 import torch
 import torch.distributed as dist
@@ -10,7 +11,7 @@ from tqdm import trange, tqdm
 from torch.utils.tensorboard import SummaryWriter
 
 from temporal_embeddings.parameters.parameters import (
-    EPOCHS, DEVICE, NUM_EVAL_STEPS, OUTPUT_DIRECTORY_PATH, MODEL_NAME, LR,
+    EPOCHS, NUM_EVAL_STEPS, OUTPUT_DIRECTORY_PATH, MODEL_NAME, LR,
     WEIGHT_DECAY, NUM_WARMUP_RATIO, TEMPERATURE, INPUT_FILE_PATH, BATCH_SIZE, SEED
 )
 from temporal_embeddings.model.gauss_model import GaussOutput
@@ -21,7 +22,7 @@ from temporal_embeddings.utils.save import save_json
 from temporal_embeddings.utils.loss.cosent_loss import CoSentLoss
 from temporal_embeddings.utils.os.folder_management import create_folders
 
-def setup_ddp():
+def setup_ddp() -> Tuple[int, int, int]:
     """Initialize distributed training"""
     dist.init_process_group(backend="nccl")
     local_rank = int(os.environ["LOCAL_RANK"])
@@ -32,27 +33,12 @@ def cleanup_ddp():
     """Cleanup distributed training"""
     dist.destroy_process_group()
 
-def main(data_fraction: float,
-         model_name: str,
-         batch_size: int,
-         lr: float,
-         weight_decay: float,
-         epochs: int,
-         num_warmup_ratio: float,
-         temperature: float,
-         num_eval_steps: int,
-         input_file_path: str,
-         output_directory_path: str,
-         continue_training: bool,
-         model_path: str) -> None:
-    
-    # Setup DDP
+def main(data_fraction: float, model_name: str, batch_size: int, lr: float, weight_decay: float, epochs: int, num_warmup_ratio: float, temperature: float, num_eval_steps: int, input_file_path: str, output_directory_path: str, continue_training: bool, model_path: str) -> None:
     local_rank, rank, world_size = setup_ddp()
     is_main_process = (rank == 0)
     
     set_seed(seed=SEED)
     
-    # Only create writer and log on main process
     writer = None
     if is_main_process:
         current_time = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
@@ -84,7 +70,6 @@ def main(data_fraction: float,
     if is_main_process:
         print("Load the execution object")
     
-    # Load checkpoint data if continuing training
     checkpoint_data = None
     if continue_training and model_path:
         if is_main_process:
@@ -101,25 +86,7 @@ def main(data_fraction: float,
     resume_step = checkpoint_data.get("step", 0) if checkpoint_data else 0
     total_epochs = epochs + resume_epoch if continue_training else epochs
     
-    execution = Execution(
-        data_fraction=data_fraction, 
-        model_name=model_name, 
-        batch_size=batch_size, 
-        lr=lr, 
-        weight_decay=weight_decay, 
-        epochs=total_epochs, 
-        num_warmup_ratio=num_warmup_ratio, 
-        temperature=temperature, 
-        num_eval_steps=num_eval_steps, 
-        input_file_path=input_file_path, 
-        output_directory_path=output_directory_path,
-        continue_training=continue_training,
-        checkpoint_data=checkpoint_data,
-        local_rank=local_rank,
-        rank=rank,
-        world_size=world_size,
-        resume_step=resume_step,
-    )
+    execution = Execution(data_fraction=data_fraction, model_name=model_name, batch_size=batch_size, lr=lr, weight_decay=weight_decay, epochs=total_epochs, num_warmup_ratio=num_warmup_ratio, temperature=temperature, num_eval_steps=num_eval_steps, input_file_path=input_file_path, output_directory_path=output_directory_path, continue_training=continue_training, checkpoint_data=checkpoint_data, local_rank=local_rank, rank=rank, world_size=world_size, resume_step=resume_step)
 
     if is_main_process:
         print("Compute the first dev score")
@@ -138,6 +105,7 @@ def main(data_fraction: float,
         best_state_dict = checkpoint_data.get('best_state_dict', execution.clone_state_dict())
         start_epoch = resume_epoch
         current_step = resume_step
+    
     else:
         best_dev_score = execution.evaluator("val") if is_main_process else 0.0
         best_epoch, best_step = 0, 0
@@ -170,14 +138,21 @@ def main(data_fraction: float,
 
     current_time = datetime.now().strftime("%Y-%m-%d_%H-%M-%S") if is_main_process else None
 
-    for epoch in trange(start_epoch, epochs, leave=False, dynamic_ncols=True, desc="Epoch", disable=not is_main_process):
+    steps_per_epoch = len(execution.gauss_data.train_dataloader)
+    resume_step_in_epoch = (current_step % steps_per_epoch) if continue_training else 0
+
+    for epoch in trange(start_epoch, total_epochs, leave=False, dynamic_ncols=True, desc="Epoch", disable=not is_main_process):
         train_losses = []
         execution.model.train()
         
         # Set epoch for DistributedSampler
         execution.gauss_data.train_dataloader.sampler.set_epoch(epoch)
 
-        for batch in tqdm(execution.gauss_data.train_dataloader, total=len(execution.gauss_data.train_dataloader), dynamic_ncols=True, leave=False, desc="Step", disable=not is_main_process):
+        is_resume_epoch = continue_training and (epoch == start_epoch) and (resume_step_in_epoch > 0)
+        for batch_idx, batch in tqdm(execution.gauss_data.train_dataloader, total=len(execution.gauss_data.train_dataloader), dynamic_ncols=True, leave=False, desc="Step", disable=not is_main_process, initial=(resume_step_in_epoch if is_resume_epoch else 0)):
+            if is_resume_epoch and batch_idx < resume_step_in_epoch:
+                continue
+
             current_step += 1
             
             # Warning if learning rate is 0 which causes frozen weights
@@ -324,18 +299,4 @@ if __name__ == "__main__":
     parser.add_argument("--model_path", type=str, default=None, help="Path to a pre-trained model to continue training.")
     args = parser.parse_args()
 
-    main(
-        data_fraction=args.data_fraction,
-        model_name=args.model_name,
-        batch_size=args.batch_size,
-        lr=args.lr,
-        weight_decay=args.weight_decay,
-        epochs=args.epochs,
-        num_warmup_ratio=args.num_warmup_ratio,
-        temperature=args.temperature,
-        num_eval_steps=args.num_eval_steps,
-        input_file_path=args.input_file_path,
-        output_directory_path=args.output_directory_path,
-        continue_training=args.continue_training,
-        model_path=args.model_path,
-    )
+    main(data_fraction=args.data_fraction, model_name=args.model_name, batch_size=args.batch_size, lr=args.lr, weight_decay=args.weight_decay, epochs=args.epochs, num_warmup_ratio=args.num_warmup_ratio, temperature=args.temperature, num_eval_steps=args.num_eval_steps, input_file_path=args.input_file_path, output_directory_path=args.output_directory_path, continue_training=args.continue_training, model_path=args.model_path)
