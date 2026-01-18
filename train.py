@@ -84,9 +84,11 @@ def main(data_fraction: float, model_name: str, batch_size: int, lr: float, weig
 
     resume_epoch = checkpoint_data.get("epoch", 0) if checkpoint_data else 0
     resume_step = checkpoint_data.get("step", 0) if checkpoint_data else 0
-    total_epochs = epochs + resume_epoch if continue_training else epochs
+    # When continuing training, epochs is the number of NEW epochs to train
+    # The scheduler in Execution is already configured for 'epochs' new epochs
+    total_epochs = epochs
     
-    execution = Execution(data_fraction=data_fraction, model_name=model_name, batch_size=batch_size, lr=lr, weight_decay=weight_decay, epochs=total_epochs, num_warmup_ratio=num_warmup_ratio, temperature=temperature, num_eval_steps=num_eval_steps, input_file_path=input_file_path, output_directory_path=output_directory_path, continue_training=continue_training, checkpoint_data=checkpoint_data, local_rank=local_rank, rank=rank, world_size=world_size, resume_step=resume_step)
+    execution = Execution(data_fraction=data_fraction, model_name=model_name, batch_size=batch_size, lr=lr, weight_decay=weight_decay, epochs=total_epochs, num_warmup_ratio=num_warmup_ratio, temperature=temperature, num_eval_steps=num_eval_steps, input_file_path=input_file_path, output_directory_path=output_directory_path, continue_training=continue_training, checkpoint_data=checkpoint_data, local_rank=local_rank, rank=rank, world_size=world_size, resume_step=0)  # Always start from step 0 for new training phase
 
     if is_main_process:
         print("Compute the first dev score")
@@ -131,28 +133,25 @@ def main(data_fraction: float, model_name: str, batch_size: int, lr: float, weig
         start_epoch = start_epoch_tensor.item()
         current_step = current_step_tensor.item()
     
-    # Ensure current learning rate is applied (redundant safety check)
-    if continue_training:
-        for param_group in execution.optimizer.param_groups:
-            param_group['lr'] = lr
-
+    # Remove the redundant lr override - scheduler now handles it correctly
+    
     current_time = datetime.now().strftime("%Y-%m-%d_%H-%M-%S") if is_main_process else None
 
     steps_per_epoch = len(execution.gauss_data.train_dataloader)
-    resume_step_in_epoch = (current_step % steps_per_epoch) if continue_training else 0
+    # No need to resume within epoch - starting fresh epochs
+    resume_step_in_epoch = 0
 
-    for epoch in trange(start_epoch, total_epochs, leave=False, dynamic_ncols=True, desc="Epoch", disable=not is_main_process):
+    for epoch in trange(0, total_epochs, leave=False, dynamic_ncols=True, desc="Epoch", disable=not is_main_process):
         train_losses = []
         execution.model.train()
         
         # Set epoch for DistributedSampler
         execution.gauss_data.train_dataloader.sampler.set_epoch(epoch)
 
-        is_resume_epoch = continue_training and (epoch == start_epoch) and (resume_step_in_epoch > 0)
-        for batch_idx, batch in enumerate(tqdm(execution.gauss_data.train_dataloader, total=len(execution.gauss_data.train_dataloader), dynamic_ncols=True, leave=False, desc="Step", disable=not is_main_process, initial=(resume_step_in_epoch if is_resume_epoch else 0))):
-            if is_resume_epoch and batch_idx < resume_step_in_epoch:
-                continue
-
+        is_resume_epoch = False  # Always start fresh
+        for batch_idx, batch in enumerate(tqdm(execution.gauss_data.train_dataloader, total=len(execution.gauss_data.train_dataloader), dynamic_ncols=True, leave=False, desc="Step", disable=not is_main_process)):
+            # Remove the skip logic since we start fresh
+            
             current_step += 1
             
             # Warning if learning rate is 0 which causes frozen weights

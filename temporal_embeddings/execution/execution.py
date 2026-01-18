@@ -52,18 +52,21 @@ class Execution():
 
         self.gauss_data: GaussData = GaussData(self.parameters["input_file_path"], self.tokenizer, self.parameters["batch_size"], data_fraction, rank=rank, world_size=world_size)
 
+        # For continued training, create a fresh scheduler for the new epochs only
         self.optimizer, self.lr_scheduler = self.create_optimizer(
             model=self.model,
             train_steps_per_epoch=len(self.gauss_data.train_dataloader),
-            last_epoch=(resume_step - 1 if resume_step > 0 else -1),
+            last_epoch=-1,  # Always start fresh scheduler
         )
         
-        # Restore optimizer and scheduler state from checkpoint
+        # Restore only optimizer state from checkpoint (not scheduler)
         if continue_training and checkpoint_data:
             if 'optimizer_state_dict' in checkpoint_data:
                 try:
                     self.optimizer.load_state_dict(checkpoint_data['optimizer_state_dict'])
+                    # Reset learning rate to the new specified value
                     for param_group in self.optimizer.param_groups:
+                        param_group["lr"] = self.parameters["learning_rate"]
                         param_group["initial_lr"] = self.parameters["learning_rate"]
                         
                     if self.rank == 0:
@@ -73,14 +76,9 @@ class Execution():
                         print(f"Warning: Could not load optimizer state: {e}")
                         print("Starting with fresh optimizer state")
             
-            if 'lr_scheduler_state_dict' in checkpoint_data:
-                try:
-                    self.lr_scheduler.load_state_dict(checkpoint_data['lr_scheduler_state_dict'])
-                    if self.rank == 0:
-                        print("Loaded learning rate scheduler state from checkpoint")
-                except RuntimeError as e:
-                    if self.rank == 0:
-                        print(f"Warning: Could not load scheduler state: {e}")
+            # Don't restore scheduler - use fresh scheduler for new training phase
+            if self.rank == 0:
+                print(f"Created fresh learning rate scheduler for {epochs} new epochs")
 
     def tokenize(self, batch: list[str]) -> BatchEncoding:
         return self.tokenizer(batch, padding=True, truncation=True, return_tensors="pt", max_length=MAX_SEQ_LEN, add_special_tokens=SPECIAL_TOKENS)
