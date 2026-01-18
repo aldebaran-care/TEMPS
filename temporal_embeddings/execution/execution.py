@@ -57,14 +57,23 @@ class Execution():
         # Restore optimizer and scheduler state from checkpoint
         if continue_training and checkpoint_data:
             if 'optimizer_state_dict' in checkpoint_data:
-                self.optimizer.load_state_dict(checkpoint_data['optimizer_state_dict'])
-                if self.rank == 0:
-                    print("Loaded optimizer state from checkpoint")
+                try:
+                    self.optimizer.load_state_dict(checkpoint_data['optimizer_state_dict'])
+                    if self.rank == 0:
+                        print("Loaded optimizer state from checkpoint")
+                except RuntimeError as e:
+                    if self.rank == 0:
+                        print(f"Warning: Could not load optimizer state: {e}")
+                        print("Starting with fresh optimizer state")
             
             if 'lr_scheduler_state_dict' in checkpoint_data:
-                self.lr_scheduler.load_state_dict(checkpoint_data['lr_scheduler_state_dict'])
-                if self.rank == 0:
-                    print("Loaded learning rate scheduler state from checkpoint")
+                try:
+                    self.lr_scheduler.load_state_dict(checkpoint_data['lr_scheduler_state_dict'])
+                    if self.rank == 0:
+                        print("Loaded learning rate scheduler state from checkpoint")
+                except RuntimeError as e:
+                    if self.rank == 0:
+                        print(f"Warning: Could not load scheduler state: {e}")
 
     def tokenize(self, batch: list[str]) -> BatchEncoding:
         return self.tokenizer(batch, padding=True, truncation=True, return_tensors="pt", max_length=MAX_SEQ_LEN, add_special_tokens=SPECIAL_TOKENS)
@@ -156,6 +165,8 @@ class Execution():
         similarities = asymmetrical_kl_sim(output0.mu, output0.std, output1.mu, output1.std)
 
         spearman = float(spearmanr(scores.cpu().abs(), similarities.cpu())[0]) * 100
+
+        self.model.train()  # Set back to train mode after evaluation
 
         return spearman
     
