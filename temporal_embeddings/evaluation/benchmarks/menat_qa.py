@@ -1,6 +1,5 @@
 from pathlib import Path
 import json
-import random
 from typing import List, Dict
 
 def create_menat_qa_benchmark(dataset_name: str) -> None:
@@ -33,6 +32,9 @@ def create_menat_qa_benchmark(dataset_name: str) -> None:
     processed_data: List[Dict] = []
     
     for item in menat_data:
+        if item["updated_answer"] == "unanswerable" or item["updated_answer"] != item["answer"]:
+            continue
+
         if dataset_name.lower() == "menat_qa_granularity" and item.get("type") != "granularity":
             continue
         
