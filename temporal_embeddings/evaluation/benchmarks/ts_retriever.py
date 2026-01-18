@@ -1,9 +1,6 @@
 from pathlib import Path
 import json
 from typing import Dict, List
-import random
-
-from temporal_embeddings.evaluation.benchmarks.utils.fetch_random_paragraphs import fetch_random_paragraphs
 
 def create_ts_retriever_benchmark() -> None:
     base: Path = Path("data/evaluation/ts_retriever")
@@ -33,19 +30,14 @@ def create_ts_retriever_benchmark() -> None:
                 
             answer_idx.append(index)
 
-        selected_paragraphs: List[str] = [paragraphs[i] for i in answer_idx]
-        selected_paragraphs += fetch_random_paragraphs(q["query"], list(set(paragraphs) - set(selected_paragraphs)), 10, use_bm25=True)
-
-        random.shuffle(selected_paragraphs)
-
         answer_idx = []
         
         for positive_text in q["positive_text"]:
-            answer_idx.append(selected_paragraphs.index(positive_text))
+            answer_idx.append(paragraphs.index(positive_text))
 
         entry = {
             "question": q["query"],
-            "paragraphs": selected_paragraphs,
+            "paragraphs": paragraphs,
             "answer": answer_idx,
         }
 
