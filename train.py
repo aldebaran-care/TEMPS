@@ -256,6 +256,23 @@ def main(data_fraction: float,
         create_folders([Path(model_path).parent])
         torch.save(execution.model.module.state_dict(), model_path)
         print("Model saved in:", model_path)
+        
+        # Save final checkpoint with complete training state
+        final_checkpoint_path = Path(output_directory_path) / f"trained_models/checkpoint_{model_name.replace('/', '_')}_{current_time}_final.pth"
+        torch.save({
+            "step": current_step,
+            "epoch": epochs - 1,
+            "model_state_dict": execution.model.module.state_dict(),
+            "optimizer_state_dict": execution.optimizer.state_dict(),
+            "lr_scheduler_state_dict": execution.lr_scheduler.state_dict(),
+            "best_dev_score": best_dev_score,
+            "best_state_dict": best_state_dict,
+            "best_epoch": best_epoch,
+            "best_step": best_step,
+            "val_metrics": val_metrics,
+        }, final_checkpoint_path)
+        print(f"Final checkpoint saved: {final_checkpoint_path}")
+        
         execution.model.eval()
 
         metrics = execution.evaluator(split="test")
