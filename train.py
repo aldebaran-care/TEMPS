@@ -86,10 +86,16 @@ def main(data_fraction: float,
     
     # Load checkpoint data if continuing training
     checkpoint_data = None
-    if continue_training and model_path and is_main_process:
-        checkpoint_data = torch.load(model_path, map_location=f'cuda:{local_rank}')
-        print(f"Loading checkpoint from {model_path}")
-        print(f"Resuming from epoch {checkpoint_data.get('epoch', 0)}, step {checkpoint_data.get('step', 0)}")
+    if continue_training and model_path:
+        if is_main_process:
+            checkpoint_data = torch.load(model_path, map_location=f'cuda:{local_rank}')
+            print(f"Loading checkpoint from {model_path}")
+            print(f"Resuming from epoch {checkpoint_data.get('epoch', 0)}, step {checkpoint_data.get('step', 0)}")
+    
+    # Broadcast checkpoint_data to all processes
+    checkpoint_list = [checkpoint_data] if is_main_process else [None]
+    dist.broadcast_object_list(checkpoint_list, src=0)
+    checkpoint_data = checkpoint_list[0]
     
     execution = Execution(data_fraction=data_fraction, 
                           model_name=model_name, 

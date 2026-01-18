@@ -46,7 +46,7 @@ class Execution():
         
         # Wrap model with DDP
         self.model = DDP(self.model, device_ids=[local_rank], output_device=local_rank, find_unused_parameters=False)
-        self.model.eval()
+        self.model.train()  # Set to train mode after DDP wrapping
         
         self.tokenizer: PreTrainedTokenizer = AutoTokenizer.from_pretrained(self.parameters["model_name"], model_max_length=MAX_SEQ_LEN, use_fast=True)
 
