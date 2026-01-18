@@ -3,7 +3,7 @@
 #SBATCH --gres=gpu:3
 #SBATCH --nodelist=n52
 #SBATCH --cpus-per-task=28
-#SBATCH --mem=180G
+#SBATCH --mem=150G
 
 source ~/.bashrc
 cd /mnt/beegfs/home/hassani/training_an_em/project/temporal-embeddings
