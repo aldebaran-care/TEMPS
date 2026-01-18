@@ -96,23 +96,30 @@ def main(data_fraction: float,
     checkpoint_list = [checkpoint_data] if is_main_process else [None]
     dist.broadcast_object_list(checkpoint_list, src=0)
     checkpoint_data = checkpoint_list[0]
+
+    resume_epoch = checkpoint_data.get("epoch", 0) if checkpoint_data else 0
+    resume_step = checkpoint_data.get("step", 0) if checkpoint_data else 0
+    total_epochs = epochs + resume_epoch if continue_training else epochs
     
-    execution = Execution(data_fraction=data_fraction, 
-                          model_name=model_name, 
-                          batch_size=batch_size, 
-                          lr=lr, 
-                          weight_decay=weight_decay, 
-                          epochs=epochs, 
-                          num_warmup_ratio=num_warmup_ratio, 
-                          temperature=temperature, 
-                          num_eval_steps=num_eval_steps, 
-                          input_file_path=input_file_path, 
-                          output_directory_path=output_directory_path,
-                          continue_training=continue_training,
-                          checkpoint_data=checkpoint_data,
-                          local_rank=local_rank,
-                          rank=rank,
-                          world_size=world_size)
+    execution = Execution(
+        data_fraction=data_fraction, 
+        model_name=model_name, 
+        batch_size=batch_size, 
+        lr=lr, 
+        weight_decay=weight_decay, 
+        epochs=total_epochs, 
+        num_warmup_ratio=num_warmup_ratio, 
+        temperature=temperature, 
+        num_eval_steps=num_eval_steps, 
+        input_file_path=input_file_path, 
+        output_directory_path=output_directory_path,
+        continue_training=continue_training,
+        checkpoint_data=checkpoint_data,
+        local_rank=local_rank,
+        rank=rank,
+        world_size=world_size,
+        resume_step=resume_step,
+    )
 
     if is_main_process:
         print("Compute the first dev score")
@@ -120,17 +127,17 @@ def main(data_fraction: float,
     # Initialize training state from checkpoint or defaults
     if checkpoint_data and is_main_process:
         best_dev_score = checkpoint_data.get('best_dev_score', 0.0)
-        best_epoch = checkpoint_data.get('epoch', 0)
-        best_step = checkpoint_data.get('step', 0)
+        best_epoch = checkpoint_data.get('best_epoch', resume_epoch)
+        best_step = checkpoint_data.get('best_step', resume_step)
         val_metrics = checkpoint_data.get('val_metrics', {
-            "epoch": best_epoch,
-            "step": best_step,
+            "epoch": resume_epoch,
+            "step": resume_step,
             "loss": float("inf"),
             "dev_score": best_dev_score,
         })
         best_state_dict = checkpoint_data.get('best_state_dict', execution.clone_state_dict())
-        start_epoch = best_epoch
-        current_step = best_step
+        start_epoch = resume_epoch
+        current_step = resume_step
     else:
         best_dev_score = execution.evaluator("val") if is_main_process else 0.0
         best_epoch, best_step = 0, 0
@@ -156,6 +163,11 @@ def main(data_fraction: float,
         start_epoch = start_epoch_tensor.item()
         current_step = current_step_tensor.item()
     
+    # Ensure current learning rate is applied (redundant safety check)
+    if continue_training:
+        for param_group in execution.optimizer.param_groups:
+            param_group['lr'] = lr
+
     current_time = datetime.now().strftime("%Y-%m-%d_%H-%M-%S") if is_main_process else None
 
     for epoch in trange(start_epoch, epochs, leave=False, dynamic_ncols=True, desc="Epoch", disable=not is_main_process):
@@ -167,6 +179,10 @@ def main(data_fraction: float,
 
         for batch in tqdm(execution.gauss_data.train_dataloader, total=len(execution.gauss_data.train_dataloader), dynamic_ncols=True, leave=False, desc="Step", disable=not is_main_process):
             current_step += 1
+            
+            # Warning if learning rate is 0 which causes frozen weights
+            if current_step % 100 == 0 and execution.optimizer.param_groups[0]['lr'] == 0.0 and is_main_process:
+                tqdm.write(f"WARNING: Learning rate is 0.0 at step {current_step}. Check if 'epochs' needs to be increased.")
 
             sent0_out: GaussOutput = execution.model.forward(
                 input_ids=batch.sent0.input_ids.to(local_rank), 

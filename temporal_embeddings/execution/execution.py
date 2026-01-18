@@ -17,7 +17,7 @@ from temporal_embeddings.utils.similarity import asymmetrical_kl_sim
 from temporal_embeddings.utils.positional_encoding import positional_encoding
 
 class Execution():
-    def __init__(self, data_fraction: float, model_name: str, batch_size: int, lr: float, weight_decay: float, epochs: int, num_warmup_ratio: float, temperature: float, num_eval_steps: int, input_file_path: str, output_directory_path: str, continue_training: bool = False, checkpoint_data: dict = None, local_rank: int = 0, rank: int = 0, world_size: int = 1) -> None:
+    def __init__(self, data_fraction: float, model_name: str, batch_size: int, lr: float, weight_decay: float, epochs: int, num_warmup_ratio: float, temperature: float, num_eval_steps: int, input_file_path: str, output_directory_path: str, continue_training: bool = False, checkpoint_data: dict = None, local_rank: int = 0, rank: int = 0, world_size: int = 1, resume_step: int = 0) -> None:
         self.parameters = {
             "model_name": model_name,
             "batch_size": batch_size,
@@ -52,15 +52,24 @@ class Execution():
 
         self.gauss_data: GaussData = GaussData(self.parameters["input_file_path"], self.tokenizer, self.parameters["batch_size"], data_fraction, rank=rank, world_size=world_size)
 
-        self.optimizer, self.lr_scheduler = self.create_optimizer(model=self.model, train_steps_per_epoch=len(self.gauss_data.train_dataloader))
+        self.optimizer, self.lr_scheduler = self.create_optimizer(
+            model=self.model,
+            train_steps_per_epoch=len(self.gauss_data.train_dataloader),
+            last_epoch=(resume_step - 1 if resume_step > 0 else -1),
+        )
         
         # Restore optimizer and scheduler state from checkpoint
         if continue_training and checkpoint_data:
             if 'optimizer_state_dict' in checkpoint_data:
                 try:
                     self.optimizer.load_state_dict(checkpoint_data['optimizer_state_dict'])
+                    
+                    # Force update the learning rate to the new configuration
+                    for param_group in self.optimizer.param_groups:
+                        param_group['lr'] = self.parameters["learning_rate"]
+                        
                     if self.rank == 0:
-                        print("Loaded optimizer state from checkpoint")
+                        print("Loaded optimizer state from checkpoint and reset learning rate")
                 except RuntimeError as e:
                     if self.rank == 0:
                         print(f"Warning: Could not load optimizer state: {e}")
@@ -93,7 +102,7 @@ class Execution():
             }
         )
 
-    def create_optimizer(self, model: torch.nn.Module, train_steps_per_epoch: int) -> tuple[torch.optim.Optimizer, torch.optim.lr_scheduler.LambdaLR]:
+    def create_optimizer(self, model: torch.nn.Module, train_steps_per_epoch: int, last_epoch: int = -1) -> tuple[torch.optim.Optimizer, torch.optim.lr_scheduler.LambdaLR]:
             no_decay = {"bias", "LayerNorm.weight"}
             optimizer_grouped_parameters = [
                 {
@@ -117,6 +126,7 @@ class Execution():
                 optimizer=optimizer,
                 num_warmup_steps=num_warmup_steps,
                 num_training_steps=num_training_steps,
+                last_epoch=last_epoch,
             )
 
             return optimizer, lr_scheduler
