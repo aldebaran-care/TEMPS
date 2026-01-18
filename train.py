@@ -149,7 +149,7 @@ def main(data_fraction: float, model_name: str, batch_size: int, lr: float, weig
         execution.gauss_data.train_dataloader.sampler.set_epoch(epoch)
 
         is_resume_epoch = continue_training and (epoch == start_epoch) and (resume_step_in_epoch > 0)
-        for batch_idx, batch in tqdm(execution.gauss_data.train_dataloader, total=len(execution.gauss_data.train_dataloader), dynamic_ncols=True, leave=False, desc="Step", disable=not is_main_process, initial=(resume_step_in_epoch if is_resume_epoch else 0)):
+        for batch_idx, batch in enumerate(tqdm(execution.gauss_data.train_dataloader, total=len(execution.gauss_data.train_dataloader), dynamic_ncols=True, leave=False, desc="Step", disable=not is_main_process, initial=(resume_step_in_epoch if is_resume_epoch else 0))):
             if is_resume_epoch and batch_idx < resume_step_in_epoch:
                 continue
 
