@@ -17,7 +17,7 @@ from temporal_embeddings.utils.similarity import asymmetrical_kl_sim
 from temporal_embeddings.utils.positional_encoding import positional_encoding
 
 class Execution():
-    def __init__(self, data_fraction: float, model_name: str, batch_size: int, lr: float, weight_decay: float, epochs: int, num_warmup_ratio: float, temperature: float, num_eval_steps: int, input_file_path: str, output_directory_path: str, continue_training: bool = False, model_path: str = None, local_rank: int = 0, rank: int = 0, world_size: int = 1) -> None:
+    def __init__(self, data_fraction: float, model_name: str, batch_size: int, lr: float, weight_decay: float, epochs: int, num_warmup_ratio: float, temperature: float, num_eval_steps: int, input_file_path: str, output_directory_path: str, continue_training: bool = False, checkpoint_data: dict = None, local_rank: int = 0, rank: int = 0, world_size: int = 1) -> None:
         self.parameters = {
             "model_name": model_name,
             "batch_size": batch_size,
@@ -39,9 +39,10 @@ class Execution():
         self.model: GaussModel = GaussModel(self.parameters["model_name"], False)
         self.model = self.model.to(self.device)
         
-        if continue_training and model_path:
-            state_dict = torch.load(model_path, map_location=self.device)
-            self.model.load_state_dict(state_dict)
+        if continue_training and checkpoint_data and 'model_state_dict' in checkpoint_data:
+            self.model.load_state_dict(checkpoint_data['model_state_dict'])
+            if self.rank == 0:
+                print("Loaded model state from checkpoint")
         
         # Wrap model with DDP
         self.model = DDP(self.model, device_ids=[local_rank], output_device=local_rank, find_unused_parameters=False)
@@ -52,6 +53,18 @@ class Execution():
         self.gauss_data: GaussData = GaussData(self.parameters["input_file_path"], self.tokenizer, self.parameters["batch_size"], data_fraction, rank=rank, world_size=world_size)
 
         self.optimizer, self.lr_scheduler = self.create_optimizer(model=self.model, train_steps_per_epoch=len(self.gauss_data.train_dataloader))
+        
+        # Restore optimizer and scheduler state from checkpoint
+        if continue_training and checkpoint_data:
+            if 'optimizer_state_dict' in checkpoint_data:
+                self.optimizer.load_state_dict(checkpoint_data['optimizer_state_dict'])
+                if self.rank == 0:
+                    print("Loaded optimizer state from checkpoint")
+            
+            if 'lr_scheduler_state_dict' in checkpoint_data:
+                self.lr_scheduler.load_state_dict(checkpoint_data['lr_scheduler_state_dict'])
+                if self.rank == 0:
+                    print("Loaded learning rate scheduler state from checkpoint")
 
     def tokenize(self, batch: list[str]) -> BatchEncoding:
         return self.tokenizer(batch, padding=True, truncation=True, return_tensors="pt", max_length=MAX_SEQ_LEN, add_special_tokens=SPECIAL_TOKENS)

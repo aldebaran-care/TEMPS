@@ -83,6 +83,14 @@ def main(data_fraction: float,
     
     if is_main_process:
         print("Load the execution object")
+    
+    # Load checkpoint data if continuing training
+    checkpoint_data = None
+    if continue_training and model_path and is_main_process:
+        checkpoint_data = torch.load(model_path, map_location=f'cuda:{local_rank}')
+        print(f"Loading checkpoint from {model_path}")
+        print(f"Resuming from epoch {checkpoint_data.get('epoch', 0)}, step {checkpoint_data.get('step', 0)}")
+    
     execution = Execution(data_fraction=data_fraction, 
                           model_name=model_name, 
                           batch_size=batch_size, 
@@ -95,29 +103,56 @@ def main(data_fraction: float,
                           input_file_path=input_file_path, 
                           output_directory_path=output_directory_path,
                           continue_training=continue_training,
-                          model_path=model_path,
+                          checkpoint_data=checkpoint_data,
                           local_rank=local_rank,
                           rank=rank,
                           world_size=world_size)
 
     if is_main_process:
         print("Compute the first dev score")
-    best_dev_score = execution.evaluator("val") if is_main_process else 0.0
-    best_epoch, best_step = 0, 0
-    val_metrics = {
-        "epoch": best_epoch,
-        "step": best_step,
-        "loss": float("inf"),
-        "dev_score": best_dev_score,
-    }
+    
+    # Initialize training state from checkpoint or defaults
+    if checkpoint_data and is_main_process:
+        best_dev_score = checkpoint_data.get('best_dev_score', 0.0)
+        best_epoch = checkpoint_data.get('epoch', 0)
+        best_step = checkpoint_data.get('step', 0)
+        val_metrics = checkpoint_data.get('val_metrics', {
+            "epoch": best_epoch,
+            "step": best_step,
+            "loss": float("inf"),
+            "dev_score": best_dev_score,
+        })
+        best_state_dict = checkpoint_data.get('best_state_dict', execution.clone_state_dict())
+        start_epoch = best_epoch
+        current_step = best_step
+    else:
+        best_dev_score = execution.evaluator("val") if is_main_process else 0.0
+        best_epoch, best_step = 0, 0
+        val_metrics = {
+            "epoch": best_epoch,
+            "step": best_step,
+            "loss": float("inf"),
+            "dev_score": best_dev_score,
+        }
+        best_state_dict = execution.clone_state_dict() if is_main_process else None
+        start_epoch = 0
+        current_step = 0
+    
     if is_main_process:
         execution.log(val_metrics)
-    best_state_dict = execution.clone_state_dict() if is_main_process else None
     
-    current_step = 0
+    # Broadcast start_epoch and current_step to all processes
+    if torch.cuda.is_available():
+        start_epoch_tensor = torch.tensor(start_epoch, dtype=torch.long, device=local_rank)
+        current_step_tensor = torch.tensor(current_step, dtype=torch.long, device=local_rank)
+        dist.broadcast(start_epoch_tensor, src=0)
+        dist.broadcast(current_step_tensor, src=0)
+        start_epoch = start_epoch_tensor.item()
+        current_step = current_step_tensor.item()
+    
     current_time = datetime.now().strftime("%Y-%m-%d_%H-%M-%S") if is_main_process else None
 
-    for epoch in trange(epochs, leave=False, dynamic_ncols=True, desc="Epoch", disable=not is_main_process):
+    for epoch in trange(start_epoch, epochs, leave=False, dynamic_ncols=True, desc="Epoch", disable=not is_main_process):
         train_losses = []
         execution.model.train()
         
