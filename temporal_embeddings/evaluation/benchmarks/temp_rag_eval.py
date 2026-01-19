@@ -1,7 +1,6 @@
 from pathlib import Path
 import json
 import csv
-import ast
 from typing import List, Dict
 
 
@@ -24,19 +23,12 @@ def create_temp_rag_eval_dataset() -> None:
                 reader = csv.DictReader(f)
                 
                 for row in reader:
-                    question: str = row["question"]
+                    question: str = row["question"].strip()
+                    gold_evidence_1: str = row["gold_evidence_1"].strip()
+                    gold_evidence_2: str = row["gold_evidence_2"].strip()
                     
-                    context_passages_str: str = row["context_passages"].strip()
-                    if not context_passages_str.endswith("]"):
-                        context_passages_str += "]"
-                    if not context_passages_str.endswith("']") and not context_passages_str.endswith('"]'):
-                        context_passages_str += "']"
-                    
-                    try:
-                        paragraphs: List[str] = ast.literal_eval(context_passages_str)
-                    
-                    except (ValueError, SyntaxError):
-                        raise ValueError(f"Error parsing context_passages field: {context_passages_str}")
+                    # Combine evidence as paragraphs, filtering out empty strings
+                    paragraphs: List[str] = [p for p in [gold_evidence_1, gold_evidence_2] if p]
                     
                     entry = {
                         "question": question,
