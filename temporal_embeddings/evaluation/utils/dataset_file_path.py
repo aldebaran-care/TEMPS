@@ -38,6 +38,9 @@ def get_dataset_file_path(benchmark: str) -> Path:
     elif benchmark == "chronoqa":
         dataset_file_path = Path("data/evaluation/chronoqa/chronoqa.json")
 
+    elif benchmark == "temp_rag_eval":
+        dataset_file_path = Path("data/evaluation/temp_rag_eval/processed_data.json")
+
     else:
         dataset_file_path = Path(benchmark)
 
