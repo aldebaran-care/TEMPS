@@ -50,8 +50,6 @@ def create_menat_qa_benchmark(dataset_name: str) -> None:
         question: str = item.get("updated_question", "")
         
         paragraphs: List[str] = [ctx["text"] for ctx in item["context"]]
-        if len(paragraphs) <= 3:
-            continue
         
         answer: str = item.get("annotated_para", "")
         answer_index: int = next((i for i, p in enumerate(paragraphs) if answer in p), -1)
