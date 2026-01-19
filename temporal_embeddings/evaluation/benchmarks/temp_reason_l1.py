@@ -1,8 +1,5 @@
 from pathlib import Path
 import json
-import random
-from datetime import datetime
-from dateutil.relativedelta import relativedelta
 from typing import List, Dict
 
 def create_temp_reason_l1_benchmark() -> None:
