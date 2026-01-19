@@ -7,11 +7,15 @@ source ~/.bashrc
 cd /mnt/beegfs/home/hassani/training_an_em/project/temporal-embeddings
 conda activate train-env
 
-BENCHMARKS=("temp_rag_eval")
+BENCHMARKS=("ts_retriever")
 EXTERNAL_MODELS=("intfloat/e5-base-v2" "all-mpnet-base-v2" "BAAI/bge-large-en-v1.5" "salesforce")
 NUM_NEGATIVE_SAMPLES=(-1)
 ALPHA_VALUES=($(seq 0.05 0.05 0.95))
-eval_id="New architecture: 50M"
+EVAL_ID="New architecture: 50M"
+MODEL_PATH="output/trained_models/model_sentence-transformers_all-MiniLM-L6-v2_2026-01-19_02-33-51.pth"
+BATCH_SIZSE=128
+MAX_SEQ_LEN=512
+TOP_K=3
 
 echo "##########################################"
 echo "### EXTERNAL MODELS ONLY (no alpha) ###"
@@ -24,11 +28,11 @@ for benchmark in "${BENCHMARKS[@]}"; do
     for num_neg in "${NUM_NEGATIVE_SAMPLES[@]}"; do
         echo "Num Negative Samples: $num_neg"
 
-        python3 evaluate.py --model_name=all-minilm-l6-v2 --model_path=output/trained_models/model_sentence-transformers_all-MiniLM-L6-v2_2026-01-18_02-11-00.pth --batch_size=128 --max_seq_len=512 --benchmark=$benchmark --eval_id="$eval_id" --top_k=5 --metric=all --num_negative_samples=$num_neg
+        python3 evaluate.py --model_name=all-minilm-l6-v2 --model_path=$MODEL_PATH --batch_size=$BATCH_SIZSE --max_seq_len=$MAX_SEQ_LEN --benchmark=$benchmark --eval_id="$EVAL_ID" --top_k=$TOP_K --metric=all --num_negative_samples=$num_neg
         
         for external_model in "${EXTERNAL_MODELS[@]}"; do
             echo "External Model: $external_model"
-            python3 evaluate.py --model_name=$external_model --benchmark=$benchmark --eval_id="$eval_id" --top_k=5 --metric=all --num_negative_samples=$num_neg
+            python3 evaluate.py --model_name=$external_model --benchmark=$benchmark --eval_id="$EVAL_ID" --top_k=$TOP_K --metric=all --num_negative_samples=$num_neg
         done
     done
 done
@@ -47,7 +51,7 @@ for alpha in "${ALPHA_VALUES[@]}"; do
             
             for external_model in "${EXTERNAL_MODELS[@]}"; do
                 echo "External Model: $external_model (with alpha)"
-                python3 evaluate.py --model_name=all-minilm-l6-v2-full --external_model_name=$external_model --model_path=output/trained_models/model_sentence-transformers_all-MiniLM-L6-v2_2026-01-18_02-11-00.pth --batch_size=128 --max_seq_len=512 --benchmark=$benchmark --eval_id="$eval_id" --top_k=5 --metric=all --alpha=$alpha --num_negative_samples=$num_neg
+                python3 evaluate.py --model_name=all-minilm-l6-v2-full --external_model_name=$external_model --model_path=$MODEL_PATH --batch_size=$BATCH_SIZSE --max_seq_len=$MAX_SEQ_LEN --benchmark=$benchmark --eval_id="$EVAL_ID" --top_k=$TOP_K --metric=all --alpha=$alpha --num_negative_samples=$num_neg
             done
         done
     done
