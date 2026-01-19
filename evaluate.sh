@@ -13,7 +13,7 @@ NUM_NEGATIVE_SAMPLES=(0)
 ALPHA_VALUES=($(seq 0.05 0.05 0.95))
 EVAL_ID="New architecture: 50M"
 MODEL_PATH="output/trained_models/model_sentence-transformers_all-MiniLM-L6-v2_2026-01-19_02-33-51.pth"
-BATCH_SIZSE=128
+BATCH_SIZE=128
 MAX_SEQ_LEN=512
 TOP_K=3
 
@@ -28,7 +28,7 @@ for benchmark in "${BENCHMARKS[@]}"; do
     for num_neg in "${NUM_NEGATIVE_SAMPLES[@]}"; do
         echo "Num Negative Samples: $num_neg"
 
-        python3 evaluate.py --model_name=all-minilm-l6-v2 --model_path=$MODEL_PATH --batch_size=$BATCH_SIZSE --max_seq_len=$MAX_SEQ_LEN --benchmark=$benchmark --eval_id="$EVAL_ID" --top_k=$TOP_K --metric=all --num_negative_samples=$num_neg
+        python3 evaluate.py --model_name=all-minilm-l6-v2 --model_path=$MODEL_PATH --batch_size=$BATCH_SIZE --max_seq_len=$MAX_SEQ_LEN --benchmark=$benchmark --eval_id="$EVAL_ID" --top_k=$TOP_K --metric=all --num_negative_samples=$num_neg
         
         for external_model in "${EXTERNAL_MODELS[@]}"; do
             echo "External Model: $external_model"
@@ -51,7 +51,7 @@ for alpha in "${ALPHA_VALUES[@]}"; do
             
             for external_model in "${EXTERNAL_MODELS[@]}"; do
                 echo "External Model: $external_model (with alpha)"
-                python3 evaluate.py --model_name=all-minilm-l6-v2-full --external_model_name=$external_model --model_path=$MODEL_PATH --batch_size=$BATCH_SIZSE --max_seq_len=$MAX_SEQ_LEN --benchmark=$benchmark --eval_id="$EVAL_ID" --top_k=$TOP_K --metric=all --alpha=$alpha --num_negative_samples=$num_neg
+                python3 evaluate.py --model_name=all-minilm-l6-v2-full --external_model_name=$external_model --model_path=$MODEL_PATH --batch_size=$BATCH_SIZE --max_seq_len=$MAX_SEQ_LEN --benchmark=$benchmark --eval_id="$EVAL_ID" --top_k=$TOP_K --metric=all --alpha=$alpha --num_negative_samples=$num_neg
             done
         done
     done
