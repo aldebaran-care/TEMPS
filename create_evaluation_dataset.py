@@ -4,6 +4,7 @@ from temporal_embeddings.evaluation.benchmarks.time_sensitive_qa import create_t
 from temporal_embeddings.evaluation.benchmarks.ts_retriever import create_ts_retriever_benchmark
 from temporal_embeddings.evaluation.benchmarks.temp_reason_l1 import create_temp_reason_l1_benchmark
 from temporal_embeddings.evaluation.benchmarks.menat_qa import create_menat_qa_benchmark
+from temporal_embeddings.evaluation.benchmarks.temp_rag_eval import create_temp_rag_eval_dataset
 
 def create_evaluation_dataset(dataset_name):
     if dataset_name.lower().startswith("time_sensitive_qa"):
@@ -18,6 +19,9 @@ def create_evaluation_dataset(dataset_name):
 
     elif dataset_name.lower().startswith("temp_reason_l1"):
         create_temp_reason_l1_benchmark()
+
+    elif dataset_name.lower().startswith("temp_rag_eval"):
+        create_temp_rag_eval_dataset()
         
     else:
         raise ValueError("Unsupported dataset name.")
