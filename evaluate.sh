@@ -1,13 +1,13 @@
 #!/bin/bash
 #SBATCH --time=23:00:00
 #SBATCH --gres=gpu:1
-#SBATCH --nodelist=n53
+#SBATCH --nodelist=n52
 
 source ~/.bashrc
 cd /mnt/beegfs/home/hassani/training_an_em/project/temporal-embeddings
 conda activate train-env
 
-BENCHMARKS=("ts_retriever")
+BENCHMARKS=("temp_rag_eval")
 EXTERNAL_MODELS=("intfloat/e5-base-v2" "all-mpnet-base-v2" "BAAI/bge-large-en-v1.5" "salesforce")
 NUM_NEGATIVE_SAMPLES=(20)
 ALPHA_VALUES=($(seq 0.05 0.05 0.95))
