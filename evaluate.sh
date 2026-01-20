@@ -7,11 +7,11 @@ source ~/.bashrc
 cd /mnt/beegfs/home/hassani/training_an_em/project/temporal-embeddings
 conda activate train-env
 
-BENCHMARKS=("temp_rag_eval")
+BENCHMARKS=("ts_retriever")
 EXTERNAL_MODELS=("intfloat/e5-base-v2" "all-mpnet-base-v2" "BAAI/bge-large-en-v1.5" "salesforce")
-NUM_NEGATIVE_SAMPLES=(-1)
+NUM_NEGATIVE_SAMPLES=(20)
 ALPHA_VALUES=($(seq 0.05 0.05 0.95))
-EVAL_ID="New architecture: 50M New temp_rag_eval"
+EVAL_ID="New architecture: 50M New ts_retriever (split)"
 MODEL_PATH="output/trained_models/model_sentence-transformers_all-MiniLM-L6-v2_2026-01-19_02-33-51.pth"
 BATCH_SIZE=128
 MAX_SEQ_LEN=512
