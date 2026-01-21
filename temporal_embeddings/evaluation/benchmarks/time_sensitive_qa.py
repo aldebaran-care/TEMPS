@@ -27,6 +27,9 @@ def create_time_sensitive_qa_benchmark(add_negative_samples: bool) -> None:
             answers = q_pair[1]
             
             for ans in answers:
+                if ans["answer"] == "":
+                    continue
+
                 para_idx = ans["para"]
                 
                 entry = {
