@@ -7,12 +7,12 @@ source ~/.bashrc
 cd /mnt/beegfs/home/hassani/training_an_em/project/temporal-embeddings
 conda activate train-env
 
-BENCHMARKS=("ts_retriever")
+BENCHMARKS=("time_sensitive_qa")
 EXTERNAL_MODELS=("intfloat/e5-base-v2" "all-mpnet-base-v2" "BAAI/bge-large-en-v1.5" "salesforce")
-NUM_NEGATIVE_SAMPLES=(-1)
+NUM_NEGATIVE_SAMPLES=(0)
 ALPHA_VALUES=($(seq 0.05 0.05 0.95))
 EVAL_ID="New architecture: SIGIR 2026 experiments"
-MODEL_PATH="output/finetuned/fine_tuned_models/fine_tuned_sentence-transformers_all-MiniLM-L6-v2_2026-01-21_02-39-12.pth"
+MODEL_PATH="output/trained_models/model_sentence-transformers_all-MiniLM-L6-v2_2026-01-19_02-33-51.pth"
 BATCH_SIZE=128
 MAX_SEQ_LEN=512
 TOP_K=("1" "3" "5" "10" "20" "50" "100")
