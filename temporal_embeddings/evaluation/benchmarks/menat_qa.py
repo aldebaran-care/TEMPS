@@ -49,15 +49,20 @@ def create_menat_qa_benchmark(dataset_name: str) -> None:
 
         question: str = item.get("updated_question", "")
         
-        paragraphs: List[str] = [ctx["text"] for ctx in item["context"]]
+        paragraphs: List[str] = list(set([c for ctx in item["context"] for c in ctx["text"].split(" . ")]))
         
-        answer: str = item.get("annotated_para", "")
-        answer_index: int = next((i for i, p in enumerate(paragraphs) if answer in p), -1)
+        answers: List[str] = item.get("annotated_para", "").split(" . ")
+
+        for ans in answers:
+            if ans not in paragraphs:
+                paragraphs.append(ans)
+
+        answer_index: List[int] = [i for i, p in enumerate(paragraphs) if any(answer in p for answer in answers)]
 
         entry = {
             "question": question,
             "paragraphs": paragraphs,
-            "answer": [answer_index] if answer_index >= 0 else [0]
+            "answer": answer_index
         }
         
         processed_data.append(entry)
