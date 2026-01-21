@@ -47,17 +47,17 @@ def create_menat_qa_benchmark(dataset_name: str) -> None:
         if dataset_name.lower() == "menat_qa_narrow" and item.get("type") != "narrow":
             continue
 
-        question: str = item.get("updated_question", "")
+        question: str = item["updated_question"].strip()
         
-        paragraphs: List[str] = list(set([c for ctx in item["context"] for c in ctx["text"].split(" . ")]))
+        paragraphs: List[str] = list(set([c.strip() for ctx in item["context"] for c in ctx["text"].split(" . ")]))
         
-        answers: List[str] = item.get("annotated_para", "").split(" . ")
+        answers: List[str] = [a.strip() for a in item["annotated_para"].split(" . ")]
 
         for ans in answers:
-            if ans not in paragraphs:
-                paragraphs.append(ans)
+            if ans.strip() not in paragraphs:
+                paragraphs.append(ans.strip())
 
-        answer_index: List[int] = [i for i, p in enumerate(paragraphs) if any(answer in p for answer in answers)]
+        answer_index: List[int] = [i for i, p in enumerate(paragraphs) if any(answer.strip() in p for answer in answers)]
 
         entry = {
             "question": question,
