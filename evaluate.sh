@@ -7,9 +7,9 @@ source ~/.bashrc
 cd /mnt/beegfs/home/hassani/training_an_em/project/temporal-embeddings
 conda activate train-env
 
-BENCHMARKS=("time_sensitive_qa")
+BENCHMARKS=("temp_reason_l1")
 EXTERNAL_MODELS=("intfloat/e5-base-v2" "all-mpnet-base-v2" "BAAI/bge-large-en-v1.5" "salesforce")
-NUM_NEGATIVE_SAMPLES=(0)
+NUM_NEGATIVE_SAMPLES=(-1)
 ALPHA_VALUES=($(seq 0.05 0.05 0.95))
 EVAL_ID="New architecture: SIGIR 2026 experiments"
 MODEL_PATH="output/trained_models/model_sentence-transformers_all-MiniLM-L6-v2_2026-01-19_02-33-51.pth"
