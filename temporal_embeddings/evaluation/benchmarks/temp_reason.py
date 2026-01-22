@@ -53,7 +53,7 @@ def create_temp_reason_benchmark(
         available_negatives = [
             p for p in all_l1_paragraphs if p not in current_paragraphs]
 
-        num_samples = min(10, len(available_negatives))
+        num_samples = min(5, len(available_negatives))
         negative_paragraphs = random.sample(available_negatives, num_samples)
         item["paragraphs"].extend(negative_paragraphs)
 
@@ -76,4 +76,4 @@ def create_temp_reason_benchmark(
         json.dump(merged_data, f, indent=2, ensure_ascii=False)
 
     print("Merge completed successfully!")
-    print(f"L1 items now have {10} negative samples each")
+    print(f"L1 items now have {5} negative samples each")
