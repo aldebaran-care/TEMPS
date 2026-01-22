@@ -9,13 +9,13 @@ conda activate train-env
 
 BENCHMARKS=("temp_reason")
 EXTERNAL_MODELS=("intfloat/e5-base-v2" "all-mpnet-base-v2" "BAAI/bge-large-en-v1.5" "salesforce")
-NUM_NEGATIVE_SAMPLES=(-1)
+NUM_NEGATIVE_SAMPLES=(0)
 ALPHA_VALUES=($(seq 0.05 0.05 0.95))
 EVAL_ID="New architecture: SIGIR 2026 experiments"
 MODEL_PATH="output/trained_models/model_sentence-transformers_all-MiniLM-L6-v2_2026-01-19_02-33-51.pth"
 BATCH_SIZE=128
 MAX_SEQ_LEN=512
-TOP_K=("1" "3" "5" "10" "20" "50" "100")
+TOP_K=("5" "10" "20" "50" "100")
 
 echo "##########################################"
 echo "### EXTERNAL MODELS ONLY (no alpha) ###"
