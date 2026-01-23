@@ -20,23 +20,6 @@ Our approach addresses key limitations in existing retrieval systems and demonst
 pip install -r requirements.txt
 ```
 
-## Project Structure
-
-```
-temporal-embeddings/
-├── temporal_embeddings/    # Main source code
-│   ├── model/              # Model architectures (GaussModel)
-│   ├── evaluation/         # Evaluation utilities and benchmarks
-│   ├── synthetic_data/     # Synthetic data generation
-│   ├── data_utils/         # Data processing utilities
-│   └── parameters/         # Configuration parameters
-├── data/                   # Datasets
-├── output/                 # Training outputs and checkpoints
-├── train.py                # Main training script
-├── evaluate.py             # Main evaluation script
-└── README.md
-```
-
 ## Usage
 
 ### 1. Creating the Training Dataset
@@ -130,11 +113,6 @@ python create_evaluation_dataset.py temp_reason
 
 # TS-Retriever benchmark
 python create_evaluation_dataset.py ts_retriever
-
-# Other available benchmarks
-python create_evaluation_dataset.py temp_reason_l1
-python create_evaluation_dataset.py temp_reason_l2
-python create_evaluation_dataset.py menat_qa
 ```
 
 ### 4. Evaluating Models
@@ -220,7 +198,7 @@ sbatch evaluate.sh
 If you use this code in your research, please cite our paper:
 
 ```bibtex
-@article{temps2024,
+@article{temps2026,
   title={TEMPS: Temporal Sentence Embeddings for Temporal Information Retrieval},
   author={},
   journal={},
