@@ -1,12 +1,14 @@
 from pathlib import Path
 import json
 from typing import Dict, List, Tuple
+from multiprocessing import Pool, cpu_count
+from functools import partial
 
 from stanza.server import CoreNLPClient
 from tqdm import tqdm
 import pandas as pd
 
-from temporal_embeddings.data_utils.utils.compute_similarity_expressions import compute_similarity_expressions
+from temporal_embeddings.data_utils.utils.compute_similarity_expressions_sutime import compute_similarity_expressions_sutime
 from temporal_embeddings.evaluation.utils.data.random_paragraphs import add_negative_samples
 
 def extract_temporal_expressions(client: CoreNLPClient, text: str) -> List[Tuple[str, str]]:
@@ -20,6 +22,31 @@ def extract_temporal_expressions(client: CoreNLPClient, text: str) -> List[Tuple
                 if expr_text not in [e[0] for e in temporal_expressions]:
                     temporal_expressions.append((expr_text, expr_value))
     return temporal_expressions
+
+def compute_question_similarities(question: str, temporal_cache, all_paragraphs, question_current_date="2021-11-09") -> pd.Series:
+    question_expressions = temporal_cache.loc[question, "expressions"]
+    similarities = []
+    
+    for paragraph in all_paragraphs:
+        paragraph_expressions = temporal_cache.loc[paragraph, "expressions"]
+        paragraph_current_date = question_current_date
+        
+        max_similarity = 0.0
+        
+        if question_expressions and paragraph_expressions:
+            for q_expr_text, q_expr_value in question_expressions:
+                for p_expr_text, p_expr_value in paragraph_expressions:
+                    similarity = compute_similarity_expressions_sutime(
+                        q_expr_value if q_expr_value else q_expr_text,
+                        p_expr_value if p_expr_value else p_expr_text,
+                        question_current_date,
+                        paragraph_current_date
+                    )
+                    max_similarity = max(max_similarity, similarity)
+        
+        similarities.append(max_similarity)
+    
+    return pd.Series(similarities, index=all_paragraphs)
 
 def compute_sutime_similarities(benchmark_file_path: Path, cache_file_path: Path, similarities_file_path: Path, num_negative_samples: int) -> pd.DataFrame:
     print("Starting SUTime similarity computation...")
@@ -86,41 +113,21 @@ def compute_sutime_similarities(benchmark_file_path: Path, cache_file_path: Path
     else:
         print(f"No similarities file found - will create new similarities cache")
         print("Processing benchmark items for similarity computation...")
-        
-        question_current_date = '2025-11-13'
-        
-        def compute_question_similarities(question: str) -> pd.Series:
-            question_expressions = temporal_cache.loc[question, "expressions"]
-            similarities = []
-            
-            for paragraph in all_paragraphs:
-                paragraph_expressions = temporal_cache.loc[paragraph, "expressions"]
-                paragraph_current_date = question_current_date
                 
-                max_similarity = 0.0
-                
-                if question_expressions and paragraph_expressions:
-                    for q_expr_text, q_expr_value in question_expressions:
-                        for p_expr_text, p_expr_value in paragraph_expressions:
-                            similarity = compute_similarity_expressions(
-                                q_expr_value if q_expr_value else q_expr_text,
-                                p_expr_value if p_expr_value else p_expr_text,
-                                question_current_date,
-                                paragraph_current_date
-                            )
-                            max_similarity = max(max_similarity, similarity)
-                
-                similarities.append(max_similarity)
-            
-            return pd.Series(similarities, index=all_paragraphs)
-        
         questions = list({item["question"] for item in benchmark_data})
         
-        print("Computing similarities using vectorized operations...")
-        output_similarities_cache = pd.DataFrame([
-            compute_question_similarities(question) 
-            for question in tqdm(questions, desc="Computing similarities")
-        ], index=questions)
+        print("Computing similarities using parallel processing...")
+        worker_func = partial(compute_question_similarities, 
+                            temporal_cache=temporal_cache, 
+                            all_paragraphs=all_paragraphs)
+        
+        with Pool(processes=cpu_count() - 1) as pool:
+            results = list(tqdm(
+                pool.imap(worker_func, questions),
+                total=len(questions),
+                desc="Computing similarities"
+            ))
+        output_similarities_cache = pd.DataFrame(results, index=questions)
 
         print(f"Saving SUTime similarities to: {similarities_file_path}")
         output_similarities_cache.to_pickle(similarities_file_path)
