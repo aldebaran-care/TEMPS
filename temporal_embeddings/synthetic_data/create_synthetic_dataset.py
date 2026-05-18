@@ -2,6 +2,7 @@ import random
 from pathlib import Path
 from typing import List, Tuple
 from multiprocessing import Pool, cpu_count
+from functools import partial
 
 import pandas as pd
 from tqdm import tqdm
@@ -19,8 +20,9 @@ from temporal_embeddings.data_utils.utils.compute_similarity_expressions import 
 from temporal_embeddings.synthetic_data.utils.mappings.expression_to_text import expression_to_text
 from temporal_embeddings.data_utils.utils.dates.generate_random_date import generate_random_date
 from temporal_embeddings.data_utils.utils.dates.is_date import is_valid_date
+from temporal_embeddings.data_utils.utils.dates.compute_similarity_dates import TSFVersion
 
-def generate_single_sample(seed_offset: int) -> List[Tuple[str, str, str, str, float]]:
+def generate_single_sample(seed_offset: int, tsf_version: TSFVersion = "v2", tsf_epsilon: float = 1e-3) -> List[Tuple[str, str, str, str, float]]:
     random.seed(42 + seed_offset)
     output_data: List[Tuple[str, str, str, str, float]] = []
     
@@ -35,7 +37,15 @@ def generate_single_sample(seed_offset: int) -> List[Tuple[str, str, str, str, f
         second_random_temporal_expression_text: str = expression_to_text(second_random_temporal_expression)
         
         try:
-            similarity: float = compute_similarity_expressions(first_random_temporal_expression, first_reference_date, second_random_temporal_expression, second_reference_date)
+            similarity: float = compute_similarity_expressions(
+                first_random_temporal_expression,
+                first_reference_date,
+                second_random_temporal_expression,
+                second_reference_date,
+                mode="train",
+                version=tsf_version,
+                epsilon=tsf_epsilon,
+            )
         except ValueError as e:
             print(f"Error computing similarity: {e}")
             continue
@@ -73,19 +83,27 @@ def generate_single_sample(seed_offset: int) -> List[Tuple[str, str, str, str, f
             print(f"Error converting expression to text: {e}")
             continue
         
-        similarity: float = compute_similarity_expressions(first_random_temporal_expression, first_reference_date, second_random_temporal_expression, second_reference_date)
+        similarity: float = compute_similarity_expressions(
+            first_random_temporal_expression,
+            first_reference_date,
+            second_random_temporal_expression,
+            second_reference_date,
+            mode="train",
+            version=tsf_version,
+            epsilon=tsf_epsilon,
+        )
         
         output_data.append((first_random_temporal_expression_text, first_reference_date, second_random_temporal_expression_text, second_reference_date, similarity))
     
     return output_data
 
-def create_synthetic_dataset(output_file_path: Path, size: int) -> None:
+def create_synthetic_dataset(output_file_path: Path, size: int, tsf_version: TSFVersion = "v2", tsf_epsilon: float = 1e-3) -> None:
     num_processes = cpu_count()
     print(f"Using {num_processes} processes for parallel generation")
     
     with Pool(processes=num_processes) as pool:
         results = list(tqdm(
-            pool.imap(generate_single_sample, range(size)),
+            pool.imap(partial(generate_single_sample, tsf_version=tsf_version, tsf_epsilon=tsf_epsilon), range(size)),
             total=size,
             desc="Generating synthetic data"
         ))

@@ -39,7 +39,6 @@ DATE_PATTERNS: Dict[str, List[str]] = {
     ],
     "yyyy-mm": [
         "{month_short}, {year}",
-        "yyyy-mm",
         "{month} {year}",
     ],
     "yyyy-mm-dd": [

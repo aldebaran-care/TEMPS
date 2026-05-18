@@ -1,8 +1,7 @@
 from typing import List
 
-from temporal_embeddings.data_utils.utils.dates.compute_similarity_dates import compute_similarity_dates_intervals
+from temporal_embeddings.data_utils.utils.dates.compute_similarity_dates import TSFMode, TSFVersion, compute_similarity_dates_intervals
 from temporal_embeddings.data_utils.utils.dates.is_date import is_valid_date
-from temporal_embeddings.data_utils.utils.dates.compute_similarity_dates import compute_similarity_dates_intervals
 from temporal_embeddings.data_utils.utils.offsets.offset_to_date import offset_to_date
 from temporal_embeddings.data_utils.utils.refs.ref_to_date import ref_to_date
 from temporal_embeddings.data_utils.utils.intervals.interval_to_date import interval_to_date
@@ -11,7 +10,16 @@ from temporal_embeddings.data_utils.utils.offsets.is_offset import is_offset
 from temporal_embeddings.data_utils.utils.refs.is_ref import is_ref
 from temporal_embeddings.data_utils.utils.intervals.is_interval import is_interval
 
-def compute_similarity_expressions_sutime(first_expression: str, first_reference_date: str, second_expression: str, second_reference_date: str) -> float:
+def compute_similarity_expressions_sutime(
+    first_expression: str,
+    first_reference_date: str,
+    second_expression: str,
+    second_reference_date: str,
+    *,
+    mode: TSFMode = "inference",
+    version: TSFVersion = "v2",
+    epsilon: float = 1e-3,
+) -> float:
     first_is_date: bool = False
     second_is_date: bool = False
 
@@ -57,7 +65,13 @@ def compute_similarity_expressions_sutime(first_expression: str, first_reference
         return 0.0
    
     if first_is_date and second_is_date:
-        return compute_similarity_dates_intervals(first_expression_explicit_date, second_expression_explicit_date)
+        return compute_similarity_dates_intervals(
+            first_expression_explicit_date,
+            second_expression_explicit_date,
+            mode=mode,
+            version=version,
+            epsilon=epsilon,
+        )
     
     else:
         return 0.0
