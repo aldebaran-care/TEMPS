@@ -128,8 +128,8 @@ def _add_months(date: datetime, months: int) -> datetime:
 
 def _normalize_for_heideltime(text: str) -> str:
     # HeidelTime handles "Jun 2001" but this port misses "Jun, 2001".
-    text = re.sub(rf"\b({MONTH_PATTERN}),\s+(\d{{4}})\b", r"\1 \2", text, flags=re.IGNORECASE)
     text = re.sub(rf"\b(\d{{1,2}}),\s+({MONTH_PATTERN}),\s+(\d{{4}})\b", r"\1 \2 \3", text, flags=re.IGNORECASE)
+    text = re.sub(rf"\b({MONTH_PATTERN}),\s+(\d{{4}})\b", r"\1 \2", text, flags=re.IGNORECASE)
     return text
 
 
@@ -356,6 +356,9 @@ def extract_intervals(text: str, reference_date: str) -> Tuple[Tuple[str, ...], 
 
 
 def score_v2(sent0: str, sent0_date: str, sent1: str, sent1_date: str) -> Optional[float]:
+    if "yyyy-mm" in sent0 or "yyyy-mm" in sent1:
+        return None
+
     sent0_intervals = [list(interval) for interval in extract_intervals(sent0, sent0_date)]
     sent1_intervals = [list(interval) for interval in extract_intervals(sent1, sent1_date)]
 
@@ -388,6 +391,30 @@ def _chunked(reader: Iterable[Dict[str, str]], chunk_size: int) -> Iterable[List
         if len(chunk) >= chunk_size:
             yield chunk
             chunk = []
+    if chunk:
+        yield chunk
+
+
+def _chunked_with_limits(
+    reader: Iterable[Dict[str, str]],
+    chunk_size: int,
+    start_index: int = 0,
+    end_index: Optional[int] = None,
+) -> Iterable[List[Dict[str, str]]]:
+    chunk: List[Dict[str, str]] = []
+    bounded_end = float("inf") if end_index is None else end_index
+
+    for row_index, row in enumerate(reader):
+        if row_index < start_index:
+            continue
+        if row_index > bounded_end:
+            break
+
+        chunk.append(row)
+        if len(chunk) >= chunk_size:
+            yield chunk
+            chunk = []
+
     if chunk:
         yield chunk
 
@@ -460,6 +487,8 @@ def add_score_v2_column(
     heideltime_language: str = "english",
     heideltime_document_type: str = "news",
     use_spacy: bool = False,
+    start_index: int = 0,
+    end_index: Optional[int] = None,
 ) -> Dict[str, int]:
     stats = {
         "rows": 0,
@@ -491,7 +520,12 @@ def add_score_v2_column(
 
         chunk_args = (
             (chunk, fieldnames, empty_value, skip_unscored)
-            for chunk in _chunked(reader, chunk_size)
+            for chunk in _chunked_with_limits(
+                reader,
+                chunk_size,
+                start_index=start_index,
+                end_index=end_index,
+            )
         )
 
         if workers == 1:
@@ -556,6 +590,8 @@ def update_file(
     heideltime_language: str,
     heideltime_document_type: str,
     use_spacy: bool,
+    start_index: int = 0,
+    end_index: Optional[int] = None,
 ) -> None:
     input_path = input_path.resolve()
     final_output_path = input_path if in_place else (output_path or default_output_path(input_path)).resolve()
@@ -575,6 +611,8 @@ def update_file(
                 heideltime_language=heideltime_language,
                 heideltime_document_type=heideltime_document_type,
                 use_spacy=use_spacy,
+                start_index=start_index,
+                end_index=end_index,
             )
             os.replace(tmp_path, input_path)
         finally:
@@ -593,6 +631,8 @@ def update_file(
             heideltime_language=heideltime_language,
             heideltime_document_type=heideltime_document_type,
             use_spacy=use_spacy,
+            start_index=start_index,
+            end_index=end_index,
         )
 
     print(f"Finished {input_path}")
@@ -601,6 +641,38 @@ def update_file(
         f"Rows: {stats['rows']:,}; scored: {stats['scored']:,}; "
         f"unscored: {stats['unscored']:,}; errors: {stats['errors']:,}"
     )
+
+
+def _read_index(prompt: str, default: Optional[int]) -> Optional[int]:
+    while True:
+        suffix = "" if default is None else f" [{default}]"
+        value = input(f"{prompt}{suffix}: ").strip()
+        if not value:
+            return default
+        if value.lower() in {"none", "all"}:
+            return None
+        try:
+            parsed = int(value)
+            if parsed < 0:
+                print("Please enter a non-negative integer.")
+                continue
+            return parsed
+        except ValueError:
+            print("Invalid input. Enter a non-negative integer, 'none', or leave empty.")
+
+
+def _prompt_slice_for_dataset(dataset_name: str) -> Tuple[int, Optional[int]]:
+    print(f"\nSelect row range for dataset '{dataset_name}' (0-based, inclusive end).")
+    start_index = _read_index("Start index", 0)
+    end_index = _read_index("End index (None for full tail)", None)
+
+    if start_index is None:
+        start_index = 0
+    if end_index is not None and end_index < start_index:
+        print("End index cannot be smaller than start index. Re-enter values.")
+        return _prompt_slice_for_dataset(dataset_name)
+
+    return start_index, end_index
 
 
 def main() -> None:
@@ -617,11 +689,20 @@ def main() -> None:
     parser.add_argument("--workers", type=int, default=os.cpu_count() or 1, help="Number of worker processes. Defaults to all available CPUs.")
     parser.add_argument("--chunk-size", type=int, default=1_000, help="Number of CSV rows scored per worker task.")
     parser.add_argument("--log-interval-seconds", type=float, default=10.0, help="How often to print progress logs.")
+    parser.add_argument(
+        "--interactive-index-range",
+        action="store_true",
+        help="Prompt in CLI for start/end row indices (0-based, inclusive end) for each processed dataset.",
+    )
     args = parser.parse_args()
 
     workers = max(1, args.workers)
 
     if args.input_path:
+        start_index = 0
+        end_index = None
+        if args.interactive_index_range:
+            start_index, end_index = _prompt_slice_for_dataset(args.input_path.name)
         update_file(
             args.input_path,
             args.output_path,
@@ -634,6 +715,8 @@ def main() -> None:
             args.heideltime_language,
             args.heideltime_document_type,
             args.use_spacy,
+            start_index=start_index,
+            end_index=end_index,
         )
         return
 
@@ -641,7 +724,11 @@ def main() -> None:
         raise ValueError("--output_path can only be used with --input_path or a single --dataset")
 
     datasets = DEFAULT_INPUTS if args.dataset == "all" else {args.dataset: DEFAULT_INPUTS[args.dataset]}
-    for dataset_path in datasets.values():
+    for dataset_name, dataset_path in datasets.items():
+        start_index = 0
+        end_index = None
+        if args.interactive_index_range:
+            start_index, end_index = _prompt_slice_for_dataset(dataset_name)
         update_file(
             dataset_path,
             args.output_path,
@@ -654,6 +741,8 @@ def main() -> None:
             args.heideltime_language,
             args.heideltime_document_type,
             args.use_spacy,
+            start_index=start_index,
+            end_index=end_index,
         )
 
 
