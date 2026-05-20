@@ -1,0 +1,30 @@
+[project]
+name = "temporal-embeddings"
+version = "0.1.0"
+description = "TEMPS: Temporal Sentence Embeddings for Temporal Information Retrieval"
+readme = "README.md"
+requires-python = ">=3.9"
+dependencies = [
+    # --- Core ML ---
+    "torch",
+    "transformers",
+    "numpy",
+    "pandas",
+    "scipy",
+    # --- Logging / progress ---
+    "tqdm",
+    "tensorboard",
+]
+
+[[tool.uv.index]]
+name = "pytorch"
+url = "https://download.pytorch.org/whl/cu128"
+explicit = true
+
+[tool.uv.sources]
+torch = [
+    { index = "pytorch", marker = "sys_platform != 'darwin'" },
+]
+
+[tool.uv]
+package = false

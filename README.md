@@ -16,8 +16,23 @@ Our approach addresses key limitations in existing retrieval systems and demonst
 
 ## Installation
 
+### Training environment (SLURM / GPU servers)
+
+Training dependencies are managed with [uv](https://docs.astral.sh/uv/) from `pyproject.toml`. The lockfile pulls the CUDA 12.8 PyTorch wheels (`cu128`).
+
+```bash
+uv sync
+```
+
+This creates a `.venv/` with everything needed to run `train.py`. Invoke scripts with `uv run`, e.g. `uv run python train.py ...` or `uv run torchrun ...` (see `train.sh`).
+
+### Data preparation / annotation environment (local)
+
+The data prep and annotation scripts (`create_*.py`, `add_score_v2_to_training_data.py`, etc.) have additional dependencies (spaCy, stanza, NLTK, sentence-transformers, datatrove, ...). For that workflow use the legacy `requirements.txt`:
+
 ```bash
 pip install -r requirements.txt
+python setup.py  # installs the Stanza CoreNLP server
 ```
 
 ## Usage
