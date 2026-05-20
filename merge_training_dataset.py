@@ -26,7 +26,10 @@ def merge_csv_files(filenames: List[str]) -> None:
     
     print(f"Concatenating {len(dataframes)} files...")
     merged_df = pd.concat(dataframes, ignore_index=True)
-    
+
+    print("Shuffling merged dataset...")
+    merged_df = merged_df.sample(frac=1, random_state=42).reset_index(drop=True)
+
     output_filename = base_dir / "merged_training_data.csv"
     print(f"Saving to {output_filename}...")
     merged_df.to_csv(output_filename, index=False)
