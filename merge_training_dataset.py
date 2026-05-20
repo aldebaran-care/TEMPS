@@ -7,7 +7,7 @@ import pandas as pd
 def merge_csv_files(filenames: List[str]) -> None:
     dataframes = []
 
-    base_dir: Path = Path("data/new_training_dataset/training_datasets")
+    base_dir: Path = Path("./")
     
     for filename in filenames:
         filepath = base_dir / filename
