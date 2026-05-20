@@ -31,3 +31,5 @@ __pycache__/
 !temporal_embeddings/config/*.json
 
 .env
+
+temporal_embeddings/heideltime_py/resources/
