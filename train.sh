@@ -18,7 +18,7 @@
 #SBATCH --job-name=temps-train
 #SBATCH --output=logs/slurm/temps-train-%j.out
 #SBATCH --error=logs/slurm/temps-train-%j.err
-#SBATCH --account=CHANGE_ME@a100
+#SBATCH --account=zrp@a100
 #SBATCH --constraint=a100
 #SBATCH --qos=qos_gpu-t3
 #SBATCH --nodes=1
