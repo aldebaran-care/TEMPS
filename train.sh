@@ -19,14 +19,13 @@
 #SBATCH --output=logs/slurm/temps-train-%j.out
 #SBATCH --error=logs/slurm/temps-train-%j.err
 #SBATCH --account=zrp@a100
+#SBATCH --partition=gpu_p5
 #SBATCH --constraint=a100
 #SBATCH --nodes=1
-#SBATCH --ntasks-per-node=1
-#SBATCH --gres=gpu:8
-#SBATCH --cpus-per-task=64
-#SBATCH --hint=nomultithread
-#SBATCH --exclusive
-#SBATCH --time=20:00:00
+#SBATCH --ntasks=1
+#SBATCH --cpus-per-task=8
+#SBATCH --gres=gpu:1
+#SBATCH --time=10:00:00
 
 set -euo pipefail
 
@@ -48,26 +47,25 @@ export TRANSFORMERS_OFFLINE=1
 export HF_HUB_OFFLINE=1
 export HF_DATASETS_OFFLINE=1   # `datasets` reads the local CSV; never hit the Hub
 
-# NCCL transport hints for Jean Zay gpu_p5 (single node, 8 A100 SXM4):
-#   - keep NVLink P2P enabled (SXM4 link is the fast intra-node path)
-#   - disable IB probing — single-node training doesn't cross IB, and the
-#     auto-probe has been observed to segfault when libfabric / UCX isn't
-#     on LD_LIBRARY_PATH
-#   - DEBUG=INFO prints the chosen transport once per rank; remove once stable
-export NCCL_P2P_DISABLE=0
-export NCCL_IB_DISABLE=1
-export NCCL_DEBUG=INFO
+# # NCCL transport hints for Jean Zay gpu_p5 (single node, 8 A100 SXM4):
+# #   - keep NVLink P2P enabled (SXM4 link is the fast intra-node path)
+# #   - disable IB probing — single-node training doesn't cross IB, and the
+# #     auto-probe has been observed to segfault when libfabric / UCX isn't
+# #     on LD_LIBRARY_PATH
+# #   - DEBUG=INFO prints the chosen transport once per rank; remove once stable
+# export NCCL_P2P_DISABLE=0
+# export NCCL_IB_DISABLE=1
+# export NCCL_DEBUG=INFO
 
 # torchrun rendezvous on a single node: nproc_per_node = # of A100 on the node.
 uv run torchrun \
-    --nproc_per_node=8 \
-    --nnodes=1 \
+    --nproc_per_node=1 \
     train.py \
-    --data_fraction=1 \
+    --data_fraction=1.0 \
     --epochs=1 \
     --batch_size=512 \
     --model_name=sentence-transformers/all-MiniLM-L6-v2 \
-    --input_file_path ./merged_training_data.csv \
+    --input_file_path ./merged_training_data.csv
 
 # Bundle the run artifacts so they can be scp'd off the cluster in one file
 # and opened locally with `tensorboard --logdir logs/runs`.
