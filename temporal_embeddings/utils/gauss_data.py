@@ -17,7 +17,7 @@ class GaussData:
 
         # self.dataset is of the form : [{"sent0": "...", "sent1": "...", "score": ...}]
         print("Loading the dataset")
-        self.dataset = pd.read_csv(str(file_path), verbose=True)
+        self.dataset = pd.read_csv(str(file_path))
         self.dataset = self.dataset[
             self.dataset["sent0"].str.split().str.len().lt(100) & 
             self.dataset["sent1"].str.split().str.len().lt(100)
