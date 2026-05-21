@@ -79,7 +79,8 @@ def main(data_fraction: float, model_name: str, batch_size: int, lr: float, weig
     
     # Broadcast checkpoint_data to all processes
     checkpoint_list = [checkpoint_data] if is_main_process else [None]
-    dist.broadcast_object_list(checkpoint_list, src=0)
+    if world_size > 1:
+        dist.broadcast_object_list(checkpoint_list, src=0)
     checkpoint_data = checkpoint_list[0]
 
     resume_epoch = checkpoint_data.get("epoch", 0) if checkpoint_data else 0
@@ -125,7 +126,7 @@ def main(data_fraction: float, model_name: str, batch_size: int, lr: float, weig
         execution.log(val_metrics)
     
     # Broadcast start_epoch and current_step to all processes
-    if torch.cuda.is_available():
+    if torch.cuda.is_available() and world_size > 1:
         start_epoch_tensor = torch.tensor(start_epoch, dtype=torch.long, device=local_rank)
         current_step_tensor = torch.tensor(current_step, dtype=torch.long, device=local_rank)
         dist.broadcast(start_epoch_tensor, src=0)
@@ -234,7 +235,8 @@ def main(data_fraction: float, model_name: str, batch_size: int, lr: float, weig
                 execution.model.train()
             
             # Synchronize all processes
-            dist.barrier()
+            if world_size > 1:
+                dist.barrier()
 
     if is_main_process:
         dev_metrics = {

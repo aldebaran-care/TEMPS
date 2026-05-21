@@ -47,6 +47,16 @@ export HF_HOME="$PWD/.hf_cache"
 export TRANSFORMERS_OFFLINE=1
 export HF_HUB_OFFLINE=1
 
+# NCCL transport hints for Jean Zay gpu_p5 (single node, 8 A100 SXM4):
+#   - keep NVLink P2P enabled (SXM4 link is the fast intra-node path)
+#   - disable IB probing — single-node training doesn't cross IB, and the
+#     auto-probe has been observed to segfault when libfabric / UCX isn't
+#     on LD_LIBRARY_PATH
+#   - DEBUG=INFO prints the chosen transport once per rank; remove once stable
+export NCCL_P2P_DISABLE=0
+export NCCL_IB_DISABLE=1
+export NCCL_DEBUG=INFO
+
 # torchrun rendezvous on a single node: nproc_per_node = # of A100 on the node.
 uv run torchrun \
     --nproc_per_node=8 \
