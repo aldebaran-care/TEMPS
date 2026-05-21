@@ -1,8 +1,7 @@
 import torch
 from torch.utils.data import DataLoader
 from scipy.stats import spearmanr
-from transformers import AutoTokenizer
-from transformers.tokenization_utils import PreTrainedTokenizer
+from transformers import AutoTokenizer, PreTrainedTokenizer
 
 from temporal_embeddings.model.gauss_model import GaussOutput, GaussModel
 from temporal_embeddings.parameters.parameters import DTYPE, DEVICE, MODEL_NAME, MAX_SEQ_LEN, INPUT_FILE_PATH, OUTPUT_DIRECTORY_PATH

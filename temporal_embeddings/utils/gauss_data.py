@@ -3,7 +3,7 @@ import pandas as pd
 import torch
 from torch.utils.data import DataLoader
 from torch.utils.data.distributed import DistributedSampler
-from transformers.tokenization_utils import BatchEncoding, PreTrainedTokenizer
+from transformers import BatchEncoding, PreTrainedTokenizer
 
 from temporal_embeddings.parameters.parameters import SHUFFLE, NUM_WORKERS, DROP_LAST, SPECIAL_TOKENS, MAX_SEQ_LEN
 from temporal_embeddings.utils.positional_encoding import positional_encoding

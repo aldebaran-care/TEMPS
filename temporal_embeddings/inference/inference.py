@@ -1,7 +1,6 @@
 import torch
 from torch.utils.data import DataLoader
-from transformers.tokenization_utils import BatchEncoding, PreTrainedTokenizer
-from transformers import AutoTokenizer
+from transformers import AutoTokenizer, BatchEncoding, PreTrainedTokenizer
 
 from temporal_embeddings.model.gauss_model import GaussModel, GaussOutput
 from temporal_embeddings.parameters.parameters import MODEL_NAME, INFERENCE_DEVICE, BATCH_SIZE, NUM_WORKERS, MAX_SEQ_LEN, INPUT_FILE_PATH, SPECIAL_TOKENS

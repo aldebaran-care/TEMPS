@@ -4,8 +4,7 @@ from pathlib import Path
 import torch
 import pandas as pd
 from torch.utils.data import DataLoader
-from transformers.tokenization_utils import BatchEncoding, PreTrainedTokenizer
-from transformers import AutoTokenizer
+from transformers import AutoTokenizer, BatchEncoding, PreTrainedTokenizer
 
 from temporal_embeddings.model.gauss_model import GaussModel, GaussOutput
 from temporal_embeddings.evaluation.utils.evaluation.temporal_model.parameters import INFERENCE_DEVICE, NUM_WORKERS, SPECIAL_TOKENS

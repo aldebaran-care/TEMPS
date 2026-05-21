@@ -3,7 +3,7 @@ import torch
 from torch.nn.parallel import DistributedDataParallel as DDP
 from torch.utils.data import DataLoader
 from transformers import AutoTokenizer
-from transformers.tokenization_utils import BatchEncoding, PreTrainedTokenizer
+from transformers import BatchEncoding, PreTrainedTokenizer
 from transformers.optimization import get_linear_schedule_with_warmup
 from scipy.stats import spearmanr
 
