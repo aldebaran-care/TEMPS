@@ -18,7 +18,7 @@ NUM_EVAL_STEPS: int = 1000
 # Data Loading Configuration
 BATCH_SIZE: int = 64
 SHUFFLE: bool = False
-NUM_WORKERS: int = 2
+NUM_WORKERS: int = 4
 DROP_LAST: bool = True
 
 # Device and Performance

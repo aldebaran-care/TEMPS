@@ -46,6 +46,7 @@ uv sync
 export HF_HOME="$PWD/.hf_cache"
 export TRANSFORMERS_OFFLINE=1
 export HF_HUB_OFFLINE=1
+export HF_DATASETS_OFFLINE=1   # `datasets` reads the local CSV; never hit the Hub
 
 # NCCL transport hints for Jean Zay gpu_p5 (single node, 8 A100 SXM4):
 #   - keep NVLink P2P enabled (SXM4 link is the fast intra-node path)
