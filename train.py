@@ -191,7 +191,7 @@ def main(data_fraction: float, model_name: str, batch_size: int, lr: float, weig
                 torch.save({
                     "step": current_step,
                     "epoch": epoch,
-                    "model_state_dict": execution.model.module.state_dict(),  # Save underlying model
+                    "model_state_dict": execution.core_model.state_dict(),  # Save underlying model
                     "optimizer_state_dict": execution.optimizer.state_dict(),
                     "lr_scheduler_state_dict": execution.lr_scheduler.state_dict(),
                     "best_dev_score": best_dev_score,
@@ -249,10 +249,10 @@ def main(data_fraction: float, model_name: str, batch_size: int, lr: float, weig
         save_json(dev_metrics, dev_metrics_path)
         print("Dev metrics saved in:", dev_metrics_path)
 
-        execution.model.module.load_state_dict(best_state_dict)  # Load into underlying model
+        execution.core_model.load_state_dict(best_state_dict)  # Load into underlying model
         model_path = f"{output_directory_path}/trained_models/model_{model_name.replace('/', '_')}_{current_time}.pth"
         create_folders([Path(model_path).parent])
-        torch.save(execution.model.module.state_dict(), model_path)
+        torch.save(execution.core_model.state_dict(), model_path)
         print("Model saved in:", model_path)
         
         # Save final checkpoint with complete training state
@@ -260,7 +260,7 @@ def main(data_fraction: float, model_name: str, batch_size: int, lr: float, weig
         torch.save({
             "step": current_step,
             "epoch": epochs - 1,
-            "model_state_dict": execution.model.module.state_dict(),
+            "model_state_dict": execution.core_model.state_dict(),
             "optimizer_state_dict": execution.optimizer.state_dict(),
             "lr_scheduler_state_dict": execution.lr_scheduler.state_dict(),
             "best_dev_score": best_dev_score,

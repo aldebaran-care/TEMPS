@@ -37,16 +37,24 @@ class Execution():
         self.device = torch.device(f"cuda:{local_rank}")
 
         self.model: GaussModel = GaussModel(self.parameters["model_name"], False)
+        if self.rank == 0:
+            print(f"Model built on CPU. Moving to {self.device}...", flush=True)
         self.model = self.model.to(self.device)
-        
+        if self.rank == 0:
+            print("Model on GPU.", flush=True)
+
         if continue_training and checkpoint_data and 'model_state_dict' in checkpoint_data:
             self.model.load_state_dict(checkpoint_data['model_state_dict'])
             if self.rank == 0:
                 print("Loaded model state from checkpoint")
-        
-        # Wrap model with DDP
-        self.model = DDP(self.model, device_ids=[local_rank], output_device=local_rank, find_unused_parameters=False)
-        self.model.train()  # Set to train mode after DDP wrapping
+
+        # Only wrap in DDP for multi-rank runs; on a single rank DDP just adds a
+        # NCCL communicator we don't need, and Jean Zay's single-rank NCCL path
+        # has been observed to segfault. The rest of this class already guards
+        # `isinstance(self.model, DDP)` so the unwrapped path is supported.
+        if world_size > 1:
+            self.model = DDP(self.model, device_ids=[local_rank], output_device=local_rank, find_unused_parameters=False)
+        self.model.train()  # Set to train mode after (optional) DDP wrapping
         
         self.tokenizer: PreTrainedTokenizer = AutoTokenizer.from_pretrained(
             self.parameters["model_name"],
@@ -84,6 +92,11 @@ class Execution():
             # Don't restore scheduler - use fresh scheduler for new training phase
             if self.rank == 0:
                 print(f"Created fresh learning rate scheduler for {epochs} new epochs")
+
+    @property
+    def core_model(self) -> GaussModel:
+        """Return the underlying GaussModel, unwrapping DDP if present."""
+        return self.model.module if isinstance(self.model, DDP) else self.model
 
     def tokenize(self, batch: list[str]) -> BatchEncoding:
         return self.tokenizer(batch, padding=True, truncation=True, return_tensors="pt", max_length=MAX_SEQ_LEN, add_special_tokens=SPECIAL_TOKENS)
