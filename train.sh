@@ -20,7 +20,6 @@
 #SBATCH --error=logs/slurm/temps-train-%j.err
 #SBATCH --account=zrp@a100
 #SBATCH --constraint=a100
-#SBATCH --qos=qos_gpu-t3
 #SBATCH --nodes=1
 #SBATCH --ntasks-per-node=1
 #SBATCH --gres=gpu:8
@@ -36,7 +35,7 @@ source ~/.bashrc
 mkdir -p logs/slurm
 
 # Project root on Jean Zay — adjust if your checkout lives elsewhere.
-cd "$WORK"/temporal-embeddings
+cd "$WORK"/projects/temporal/temporal-embeddings
 
 uv sync
 
