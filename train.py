@@ -187,7 +187,8 @@ def main(data_fraction: float, model_name: str, batch_size: int, lr: float, weig
                 execution.model.eval()
 
                 checkpoint_path: Path = Path(output_directory_path) / Path(f"trained_models/model_{model_name.replace('/', '_')}_{current_time}_{current_step}.pth")
-                
+                create_folders([checkpoint_path.parent])
+
                 torch.save({
                     "step": current_step,
                     "epoch": epoch,
