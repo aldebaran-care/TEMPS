@@ -7,7 +7,6 @@ import pandas as pd
 from temporal_embeddings.evaluation.utils.evaluation.temporal_model.compute_temporal_similarities import compute_temporal_similarities
 from temporal_embeddings.config.set_output_files import set_output_files
 from temporal_embeddings.evaluation.utils.evaluation.metrics import compute_metrics
-from temporal_embeddings.evaluation.utils.notion.notion import log_metrics_to_notion
 from temporal_embeddings.evaluation.utils.data.random_paragraphs import add_negative_samples
 
 def evaluate_temporal_model(temporal_model_name: str, temporal_model_path: Path, batch_size: int, max_seq_len: int, benchmark: str, benchmark_file_path: Path, eval_id: str, top_k: int, metric: str, num_negative_samples: int = 0, reference_date: str = "2021-11-09") -> None:
@@ -69,7 +68,6 @@ def evaluate_temporal_model(temporal_model_name: str, temporal_model_path: Path,
     print(f"Computing metrics with top_k={top_k}, metric={metric}")
     
     results: Dict[str, float]= compute_metrics(ground_truth, similarities_list, top_k, metric)
-    log_metrics_to_notion(id=eval_id, model=temporal_model_name, benchmark=benchmark, metrics=results, k=top_k, num_negative_samples=num_negative_samples)
-    
+
     print(results)
     print("Evaluation completed successfully")

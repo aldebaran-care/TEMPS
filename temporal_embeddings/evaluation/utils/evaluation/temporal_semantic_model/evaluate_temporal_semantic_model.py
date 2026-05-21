@@ -9,7 +9,6 @@ from temporal_embeddings.evaluation.utils.evaluation.metrics import compute_metr
 from temporal_embeddings.evaluation.utils.evaluation.temporal_model.compute_temporal_similarities import compute_temporal_similarities
 from temporal_embeddings.evaluation.utils.evaluation.semantic_model.compute_semantic_similarities import compute_semantic_similarities
 from temporal_embeddings.utils.math.normalize import normalize_list
-from temporal_embeddings.evaluation.utils.notion.notion import log_metrics_to_notion
 from temporal_embeddings.evaluation.utils.data.random_paragraphs import add_negative_samples
 
 def reciprocal_rank_fusion(temporal_sims: pd.DataFrame, semantic_sims: pd.DataFrame, k: int = 60, alpha: float = 0.5) -> pd.DataFrame:
@@ -115,7 +114,6 @@ def evaluate_temporal_semantic_model(temporal_model_name: str, semantic_model_na
     print(f"Computing score metrics with top_k={top_k}, metric={metric}")
 
     results: Dict[str, float]= compute_metrics(ground_truth, filtered_similarities, top_k, metric)
-    log_metrics_to_notion(id=eval_id, model=temporal_model_name, external_model=semantic_model_name, benchmark=benchmark, metrics=results, k=top_k, alpha=alpha, num_negative_samples=num_negative_samples)
 
     print(results)
     print("Temporal semantic model evaluation completed successfully")

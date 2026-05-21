@@ -18,7 +18,7 @@ class GaussModel(nn.Module):
     def __init__(self, model_name: str, gradient_checkpointing: bool = False) -> None:
         super().__init__()
 
-        self.backbone: PreTrainedModel = AutoModel.from_pretrained(model_name)
+        self.backbone: PreTrainedModel = AutoModel.from_pretrained(model_name, local_files_only=True)
 
         # Freeze backbone weights
         for param in self.backbone.parameters():

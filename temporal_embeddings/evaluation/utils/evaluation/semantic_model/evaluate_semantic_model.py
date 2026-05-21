@@ -7,7 +7,6 @@ import pandas as pd
 from temporal_embeddings.evaluation.utils.evaluation.semantic_model.compute_semantic_similarities import compute_semantic_similarities
 from temporal_embeddings.config.set_output_files import set_output_files
 from temporal_embeddings.evaluation.utils.evaluation.metrics import compute_metrics
-from temporal_embeddings.evaluation.utils.notion.notion import log_metrics_to_notion
 from temporal_embeddings.evaluation.utils.data.random_paragraphs import add_negative_samples
 
 def evaluate_semantic_model(semantic_model_name: str, max_seq_len: int, benchmark: str, benchmark_file_path: Path, eval_id: str, top_k: int, metric: str, num_negative_samples: int = 0) -> None:
@@ -61,7 +60,6 @@ def evaluate_semantic_model(semantic_model_name: str, max_seq_len: int, benchmar
     print(f"Computing metrics with top_k={top_k}, metric={metric}, num_negative_samples={num_negative_samples}")
     
     results: Dict[str, float]= compute_metrics(ground_truth, similarities_list, top_k, metric)
-    log_metrics_to_notion(id=eval_id, model=semantic_model_name, benchmark=benchmark, metrics=results, k=top_k, num_negative_samples=num_negative_samples)
-    
+
     print(results)
     print("Evaluation completed successfully")

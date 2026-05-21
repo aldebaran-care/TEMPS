@@ -48,7 +48,12 @@ class Execution():
         self.model = DDP(self.model, device_ids=[local_rank], output_device=local_rank, find_unused_parameters=False)
         self.model.train()  # Set to train mode after DDP wrapping
         
-        self.tokenizer: PreTrainedTokenizer = AutoTokenizer.from_pretrained(self.parameters["model_name"], model_max_length=MAX_SEQ_LEN, use_fast=True)
+        self.tokenizer: PreTrainedTokenizer = AutoTokenizer.from_pretrained(
+            self.parameters["model_name"],
+            model_max_length=MAX_SEQ_LEN,
+            use_fast=True,
+            local_files_only=True,
+        )
 
         self.gauss_data: GaussData = GaussData(self.parameters["input_file_path"], self.tokenizer, self.parameters["batch_size"], data_fraction, rank=rank, world_size=world_size)
 
