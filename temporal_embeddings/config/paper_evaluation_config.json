@@ -1,0 +1,51 @@
+{
+    "global": {
+        "batch_size": 128,
+        "max_seq_len": 512,
+        "top_k": 5,
+        "num_negative_samples": 0,
+        "reference_date": "2021-11-09"
+    },
+    "benchmarks": {
+        "time_sensitive_qa": {
+            "enabled": true
+        },
+        "temp_reason": {
+            "enabled": true
+        },
+        "ts_retriever": {
+            "enabled": true
+        }
+    },
+    "temporal": {
+        "enabled": true,
+        "model_name": "all-minilm-l6-v2",
+        "model_path": "output/trained_models/SET_ME_TO_POSTTRAIN_CHECKPOINT.pth"
+    },
+    "semantic_baselines": {
+        "enabled": true,
+        "models": [
+            "intfloat/e5-base-v2",
+            "all-mpnet-base-v2",
+            "BAAI/bge-large-en-v1.5",
+            "salesforce"
+        ]
+    },
+    "hybrid": {
+        "enabled": true,
+        "temporal_model_name": "all-minilm-l6-v2-full",
+        "semantic_models": [
+            "intfloat/e5-base-v2",
+            "all-mpnet-base-v2",
+            "BAAI/bge-large-en-v1.5",
+            "salesforce"
+        ],
+        "alphas": [
+            0.5
+        ]
+    },
+    "report": {
+        "output_path": "output/metrics/paper_evaluation_report.md",
+        "include_macro_average": true
+    }
+}
