@@ -36,3 +36,5 @@ temporal_embeddings/heideltime_py/resources/
 
 # uv
 .venv/
+
+jean_zay_logs/
