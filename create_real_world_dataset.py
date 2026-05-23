@@ -2,13 +2,11 @@ import json
 from typing import List, Dict, Tuple
 from pathlib import Path
 from multiprocessing import Pool, cpu_count
-from functools import partial
 
 import pandas as pd
 from tqdm import tqdm
 
 from temporal_embeddings.data_utils.utils.compute_similarity_expressions import compute_similarity_expressions
-from temporal_embeddings.data_utils.utils.dates.compute_similarity_dates import TSFVersion
 from temporal_embeddings.data_utils.utils.offsets.is_offset import is_offset
 from temporal_embeddings.data_utils.utils.refs.is_ref import is_ref
 from temporal_embeddings.data_utils.utils.intervals.is_interval import is_interval
@@ -24,60 +22,57 @@ def is_valid_temporal_expression(expression: str) -> bool:
     return (is_valid_date(expression)[0] or
             is_interval(expression)[0])
 
-def generate_sample_from_entry(entry: Dict, tsf_version: TSFVersion = "v2", tsf_epsilon: float = 1e-3) -> List[Tuple[str, str, str, str, float]]:
+def generate_sample_from_entry(entry: Dict) -> List[Tuple[str, str, str, str, float]]:
     output_data: List[Tuple[str, str, str, str, float]] = []
-    
+
     first_text = entry['text'].replace('\n', ' ').strip()
     first_ref_date = entry['ref_date']
     first_values = entry['values']
-    
+
     if not first_values:
         return output_data
-    
+
     for value in first_values:
         for _ in range(4):
             second_random_temporal_expression = generate_random_temporal_expression(probabilities=[0.3, 0.04, 0.01, 0.65], close=False, expression="", current_date="")
-            
+
             try:
                 second_random_temporal_expression_text = expression_to_text(second_random_temporal_expression)
-            
+
             except ValueError as e:
                 print(f"Error converting expression to text: {e}")
-                
+
                 continue
-            
+
             try:
                 similarity = compute_similarity_expressions(
                     value,
                     first_ref_date,
                     second_random_temporal_expression,
                     first_ref_date,
-                    mode="train",
-                    version=tsf_version,
-                    epsilon=tsf_epsilon,
                 )
-                
+
                 output_data.append((first_text, first_ref_date, second_random_temporal_expression_text, first_ref_date, similarity))
-            
+
             except ValueError as e:
                 print(f"Error computing similarity: {e}")
                 continue
-        
+
         for _ in range(1):
             dates: List[str] = []
-            
+
             if is_valid_date(value)[0]:
                 dates = to_explicit_date(value)
-            
+
             elif is_offset(value)[0]:
                 dates = offset_to_date(value, first_ref_date)
-            
+
             elif is_ref(value)[0]:
                 dates = ref_to_date(value, first_ref_date)
-            
+
             elif is_interval(value)[0]:
                 dates = interval_to_date(value)
-            
+
             if len(dates) > 0:
                 if len(dates) > 1:
                     close_temporal_expression = f"{dates[0]},{dates[1]}"
@@ -86,30 +81,31 @@ def generate_sample_from_entry(entry: Dict, tsf_version: TSFVersion = "v2", tsf_
             else:
                 print(f"Cannot derive dates from expression: {value}")
                 continue
-            
+
             try:
                 close_temporal_expression_text = expression_to_text(close_temporal_expression)
-            
+
             except ValueError as e:
                 print(f"Error converting expression to text: {e}")
-            
+
                 continue
-            
-            similarity = compute_similarity_expressions(
-                value,
-                first_ref_date,
-                close_temporal_expression,
-                first_ref_date,
-                mode="train",
-                version=tsf_version,
-                epsilon=tsf_epsilon,
-            )
-            
+
+            try:
+                similarity = compute_similarity_expressions(
+                    value,
+                    first_ref_date,
+                    close_temporal_expression,
+                    first_ref_date,
+                )
+            except ValueError as e:
+                print(f"Error computing similarity: {e}")
+                continue
+
             output_data.append((first_text, first_ref_date, close_temporal_expression_text, first_ref_date, similarity))
-    
+
     return output_data
 
-def create_real_world_dataset(input_path: Path, output_path: Path, fraction: List[float]=[0.0, 1.0], tsf_version: TSFVersion = "v2", tsf_epsilon: float = 1e-3) -> None:
+def create_real_world_dataset(input_path: Path, output_path: Path, fraction: List[float]=[0.0, 1.0]) -> None:
     print(f"Loading data from {input_path}...")
     try:
         with input_path.open('r', encoding='utf-8') as f:
@@ -171,7 +167,7 @@ def create_real_world_dataset(input_path: Path, output_path: Path, fraction: Lis
     print("Starting parallel pair generation...")
     with Pool(processes=num_processes) as pool:
         results = list(tqdm(
-            pool.imap(partial(generate_sample_from_entry, tsf_version=tsf_version, tsf_epsilon=tsf_epsilon), processed_sentences),
+            pool.imap(generate_sample_from_entry, processed_sentences),
             total=len(processed_sentences),
             desc="Generating training pairs",
             unit="entry"
@@ -202,9 +198,7 @@ if __name__ == "__main__":
     parser.add_argument('--input_path', type=Path, required=True, help='Path to the input annotated dataset (JSON format).')
     parser.add_argument('--output_path', type=Path, required=True, help='Path to save the output dataset (CSV format).')
     parser.add_argument('--fraction', type=float, nargs=2, default=[0.0, 1.0], help='Fraction of the dataset to use (start and end).')
-    parser.add_argument('--tsf_version', type=str, choices=["v1", "v2"], default="v2", help='Temporal similarity function version to use for labels.')
-    parser.add_argument('--tsf_epsilon', type=float, default=1e-3, help='Numerical floor for the TSF V2 disjoint training tail.')
-    
+
     args = parser.parse_args()
-    
-    create_real_world_dataset(args.input_path, args.output_path, args.fraction, args.tsf_version, args.tsf_epsilon)
+
+    create_real_world_dataset(args.input_path, args.output_path, args.fraction)

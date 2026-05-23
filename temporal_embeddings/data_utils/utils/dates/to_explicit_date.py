@@ -1,3 +1,4 @@
+from calendar import monthrange
 from typing import List
 
 from temporal_embeddings.data_utils.utils.dates.is_date import is_valid_date
@@ -5,21 +6,18 @@ from temporal_embeddings.data_utils.utils.dates.is_date import is_valid_date
 def to_explicit_date(annotation: str) -> List[str]:
     if not is_valid_date(annotation)[0]:
         raise ValueError(f"Invalid date format: {annotation}")
-    
+
     date_format = is_valid_date(annotation)[1]
-    
+
     if date_format == "yyyy":
         return [f"{annotation}-01-01", f"{annotation}-12-31"]
-    
+
     elif date_format == "yyyy-mm":
         year  = annotation.split("-")[0]
-        
+
         month = annotation.split("-")[-1]
-        if int(month) == 2:
-            last_day = 28
-        else:
-            last_day = 30
-        
+        last_day = monthrange(int(year), int(month))[1]
+
         return [f"{year}-{month}-01", f"{year}-{month}-{last_day}"]
     
     elif date_format == "yyyys":

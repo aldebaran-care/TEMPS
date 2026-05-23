@@ -8,8 +8,7 @@ import pandas as pd
 from tqdm import tqdm
 
 from temporal_embeddings.data_utils.utils.dates.dates_settings import START_DATE, END_DATE
-from temporal_embeddings.data_utils.utils.dates.compute_distance_dates import compute_distance_dates_same_type
-from temporal_embeddings.data_utils.utils.dates.compute_similarity_dates import TSFVersion, compute_similarity_dates
+from temporal_embeddings.data_utils.utils.dates.compute_similarity_dates import compute_similarity_dates
 
 MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
 
@@ -87,9 +86,9 @@ def generate_random_date(start_year: int=int(START_DATE.split("-")[0]), end_year
 
     return random_date.strftime("%Y-%m-%d")
 
-def generate_dataset(n_phrases: int, tsf_version: TSFVersion = "v2", tsf_epsilon: float = 1e-3) -> pd.DataFrame:
+def generate_dataset(n_phrases: int) -> pd.DataFrame:
     data: List[Dict] = []
-    
+
     for _ in tqdm(range(n_phrases)):
         while True:
             phrase, answer = phrase_and_answer()
@@ -99,27 +98,17 @@ def generate_dataset(n_phrases: int, tsf_version: TSFVersion = "v2", tsf_epsilon
         data.append({"sent0": phrase, "sent0_date": generate_random_date(), "sent1": answer, "sent1_date": generate_random_date(), "score": 1.0})
 
         incorrect_dates: set[str] = set()
-        
+
         while len(incorrect_dates) < 4:
             d = random_date_str()
-            
+
             if d != answer and is_date_in_range(d):
                 incorrect_dates.add(d)
-        
+
         for d in incorrect_dates:
             answer_date = month_year_to_yyyy_mm(answer)
             candidate_date = month_year_to_yyyy_mm(d)
-            score = (
-                1 / compute_distance_dates_same_type(answer_date, candidate_date, "yyyy-mm")
-                if tsf_version == "v1"
-                else compute_similarity_dates(
-                    answer_date,
-                    candidate_date,
-                    mode="train",
-                    version=tsf_version,
-                    epsilon=tsf_epsilon,
-                )
-            )
+            score = compute_similarity_dates(answer_date, candidate_date)
             data.append({
                 "sent0": phrase,
                 "sent0_date": generate_random_date(),
@@ -127,16 +116,14 @@ def generate_dataset(n_phrases: int, tsf_version: TSFVersion = "v2", tsf_epsilon
                 "sent1_date": generate_random_date(),
                 "score": score,
             })
-    
+
     return pd.DataFrame(data)
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Generate a synthetic temporal dataset.')
     parser.add_argument('--n_phrases', type=int, default=1000000, help='Number of phrases to generate.')
     parser.add_argument('--output_file_path', type=str, default="synthetic_temporal_dataset.csv", help='Output file path for the dataset.')
-    parser.add_argument('--tsf_version', type=str, choices=["v1", "v2"], default="v2", help='Temporal similarity function version to use for labels.')
-    parser.add_argument('--tsf_epsilon', type=float, default=1e-3, help='Numerical floor for the TSF V2 disjoint training tail.')
     args = parser.parse_args()
 
-    df = generate_dataset(args.n_phrases, args.tsf_version, args.tsf_epsilon)
+    df = generate_dataset(args.n_phrases)
     df.to_csv(args.output_file_path, index=False)

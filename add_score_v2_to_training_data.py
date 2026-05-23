@@ -373,8 +373,6 @@ def score_v2(sent0: str, sent0_date: str, sent1: str, sent1_date: str) -> Option
                 compute_similarity_dates_intervals(
                     first_interval,
                     second_interval,
-                    mode="train",
-                    version="v2",
                 ),
             )
     return best
