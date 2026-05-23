@@ -1,5 +1,5 @@
 #!/bin/bash
-#SBATCH --job-name=temps-train
+#SBATCH --job-name=temps-train-fast
 #SBATCH --output=logs/slurm/temps-train-%j.out
 #SBATCH --error=logs/slurm/temps-train-%j.err
 #SBATCH --account=zrp@a100
@@ -28,20 +28,24 @@ export TRANSFORMERS_OFFLINE=1
 export HF_HUB_OFFLINE=1
 export HF_DATASETS_OFFLINE=1
 
-# NCCL settings for Jean Zay gpu_p5, single-node 8×A100:
-# - keep GPU-to-GPU P2P enabled so NCCL can use NVLink / direct GPU access
-# - disable InfiniBand because this job is not multi-node
-# - WARN is enough after debugging; use INFO only when diagnosing NCCL setup
 export NCCL_P2P_DISABLE=0
 export NCCL_IB_DISABLE=1
 export NCCL_DEBUG=WARN
 
+export OMP_NUM_THREADS=8
+export MKL_NUM_THREADS=8
+export TOKENIZERS_PARALLELISM=false
+export PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True
+
 uv run torchrun \
+    --standalone \
+    --nnodes=1 \
     --nproc_per_node=8 \
     train.py \
     --data_fraction=1.0 \
     --epochs=1 \
-    --batch_size=1024 \
+    --batch_size=2048 \
+    --num_eval_steps=500 \
     --model_name=sentence-transformers/all-MiniLM-L6-v2 \
     --input_file_path ./merged_training_data.csv
 
