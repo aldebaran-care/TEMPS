@@ -1,10 +1,12 @@
 import argparse
+import gc
 import json
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Dict, List, Tuple
+from typing import Any, Dict, List, Optional, Tuple
 
 import pandas as pd
+import torch
 
 from temporal_embeddings.config.set_output_files import set_output_files
 from temporal_embeddings.evaluation.utils.data.random_paragraphs import add_negative_samples
@@ -163,22 +165,14 @@ def _build_run_matrix(config: Dict[str, Any]) -> List[RunSpec]:
 
 
 def _load_benchmark_data(
-    benchmark_name: str,
     benchmark_path: Path,
     num_negative_samples: int,
-    benchmark_cache: Dict[Tuple[str, int], List[Dict[str, Any]]],
 ) -> List[Dict[str, Any]]:
-    cache_key = (benchmark_name, num_negative_samples)
-    if cache_key in benchmark_cache:
-        return benchmark_cache[cache_key]
-
     with benchmark_path.open("r", encoding="utf-8") as f:
-        benchmark_data: List[Dict[str, Any]] = add_negative_samples(
+        return add_negative_samples(
             json.load(f),
             num_negatives=num_negative_samples,
         )
-    benchmark_cache[cache_key] = benchmark_data
-    return benchmark_data
 
 
 def _get_temporal_similarities(
@@ -188,6 +182,7 @@ def _get_temporal_similarities(
     config: Dict[str, Any],
     temporal_model_path: Path,
     similarity_cache: Dict[str, pd.DataFrame],
+    benchmark_data: Optional[List[Dict[str, Any]]] = None,
 ) -> pd.DataFrame:
     output_paths = set_output_files(
         temporal_model_name=run_spec.temporal_model_name,
@@ -214,6 +209,7 @@ def _get_temporal_similarities(
             temporal_similarities_file_path=similarities_path,
             num_negative_samples=int(config["global"].get("num_negative_samples", 0)),
             reference_date=str(config["global"].get("reference_date", "2021-11-09")),
+            benchmark_data=benchmark_data,
         )
     similarity_cache[cache_key] = temporal_similarities
     return temporal_similarities
@@ -226,6 +222,7 @@ def _get_semantic_similarities(
     benchmark_path: Path,
     config: Dict[str, Any],
     similarity_cache: Dict[str, pd.DataFrame],
+    benchmark_data: Optional[List[Dict[str, Any]]] = None,
 ) -> pd.DataFrame:
     output_paths = set_output_files(
         temporal_model_name="",
@@ -249,6 +246,7 @@ def _get_semantic_similarities(
             semantic_cache_file_path=output_paths["semantic_cache_path"],
             semantic_similarities_file_path=similarities_path,
             num_negative_samples=int(config["global"].get("num_negative_samples", 0)),
+            benchmark_data=benchmark_data,
         )
 
     similarity_cache[cache_key] = semantic_similarities
@@ -386,6 +384,12 @@ def _write_markdown_report(
         f.write("\n".join(markdown_lines))
 
 
+def _release_memory() -> None:
+    gc.collect()
+    if torch.cuda.is_available():
+        torch.cuda.empty_cache()
+
+
 def run_paper_evaluations(config_path: Path) -> None:
     with config_path.open("r", encoding="utf-8") as f:
         config: Dict[str, Any] = json.load(f)
@@ -398,26 +402,26 @@ def run_paper_evaluations(config_path: Path) -> None:
     enabled_benchmarks = _get_enabled_benchmarks(config)
     run_matrix = _build_run_matrix(config)
 
-    benchmark_cache: Dict[Tuple[str, int], List[Dict[str, Any]]] = {}
-    similarity_cache: Dict[str, pd.DataFrame] = {}
-    normalized_similarity_cache: Dict[int, pd.DataFrame] = {}
     report_rows: List[Dict[str, Any]] = []
+    run_order = {run.run_id: idx for idx, run in enumerate(run_matrix)}
+    benchmark_order = {benchmark_name: idx for idx, benchmark_name in enumerate(enabled_benchmarks)}
 
     print(f"Running {len(run_matrix)} run configurations over {len(enabled_benchmarks)} benchmarks.")
 
-    for run_spec in run_matrix:
-        print(f"\n=== Run: {run_spec.run_id} ===")
-        for benchmark_name in enabled_benchmarks:
-            benchmark_path = BENCHMARK_PATHS[benchmark_name]
-            print(f"[{run_spec.run_id}] Benchmark: {benchmark_name}")
+    for benchmark_name in enabled_benchmarks:
+        benchmark_path = BENCHMARK_PATHS[benchmark_name]
+        print(f"\n=== Benchmark: {benchmark_name} ===")
 
-            benchmark_data = _load_benchmark_data(
-                benchmark_name=benchmark_name,
-                benchmark_path=benchmark_path,
-                num_negative_samples=num_negative_samples,
-                benchmark_cache=benchmark_cache,
-            )
-            ground_truth = [item["answer"] for item in benchmark_data]
+        benchmark_data = _load_benchmark_data(
+            benchmark_path=benchmark_path,
+            num_negative_samples=num_negative_samples,
+        )
+        ground_truth = [item["answer"] for item in benchmark_data]
+        similarity_cache: Dict[str, pd.DataFrame] = {}
+        normalized_temporal_cache: Dict[int, pd.DataFrame] = {}
+
+        for run_spec in run_matrix:
+            print(f"[{benchmark_name}] Run: {run_spec.run_id}")
 
             if run_spec.run_type == "temporal":
                 similarities_df = _get_temporal_similarities(
@@ -427,6 +431,7 @@ def run_paper_evaluations(config_path: Path) -> None:
                     config=config,
                     temporal_model_path=temporal_model_path,
                     similarity_cache=similarity_cache,
+                    benchmark_data=benchmark_data,
                 )
             elif run_spec.run_type == "semantic":
                 similarities_df = _get_semantic_similarities(
@@ -436,6 +441,7 @@ def run_paper_evaluations(config_path: Path) -> None:
                     benchmark_path=benchmark_path,
                     config=config,
                     similarity_cache=similarity_cache,
+                    benchmark_data=benchmark_data,
                 )
             else:
                 temporal_df = _get_temporal_similarities(
@@ -445,6 +451,7 @@ def run_paper_evaluations(config_path: Path) -> None:
                     config=config,
                     temporal_model_path=temporal_model_path,
                     similarity_cache=similarity_cache,
+                    benchmark_data=benchmark_data,
                 )
                 semantic_df = _get_semantic_similarities(
                     semantic_model_name=run_spec.semantic_model_name,
@@ -453,9 +460,10 @@ def run_paper_evaluations(config_path: Path) -> None:
                     benchmark_path=benchmark_path,
                     config=config,
                     similarity_cache=similarity_cache,
+                    benchmark_data=benchmark_data,
                 )
-                normalized_temporal_df = _normalize_similarity_df(temporal_df, normalized_similarity_cache)
-                normalized_semantic_df = _normalize_similarity_df(semantic_df, normalized_similarity_cache)
+                normalized_temporal_df = _normalize_similarity_df(temporal_df, normalized_temporal_cache)
+                normalized_semantic_df = _normalize_similarity_df(semantic_df, {})
                 similarities_df = _merge_hybrid_similarities(
                     temporal_similarities=normalized_temporal_df,
                     semantic_similarities=normalized_semantic_df,
@@ -488,6 +496,27 @@ def run_paper_evaluations(config_path: Path) -> None:
                 f"Recall@5={metrics['recall']:.6f}, "
                 f"Precision@5={metrics['precision']:.6f}"
             )
+
+            del similarities_list
+            del metrics
+            if run_spec.run_type == "hybrid":
+                del temporal_df
+                del semantic_df
+                del normalized_temporal_df
+                del normalized_semantic_df
+            del similarities_df
+
+        similarity_cache.clear()
+        normalized_temporal_cache.clear()
+        del similarity_cache
+        del normalized_temporal_cache
+        del ground_truth
+        del benchmark_data
+        _release_memory()
+
+    report_rows.sort(
+        key=lambda row: (run_order[row["run_id"]], benchmark_order[row["benchmark"]]),
+    )
 
     report_path = Path(config["report"]["output_path"])
     include_macro_average = bool(config["report"].get("include_macro_average", True))

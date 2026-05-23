@@ -1,6 +1,6 @@
 from pathlib import Path
 import json
-from typing import List
+from typing import Any, Dict, List, Optional
 from math import ceil
 
 from tqdm import tqdm
@@ -35,117 +35,143 @@ def batch_encode(model, texts_to_encode: List[str], batch_size: int = 64) -> Lis
         encoded_embeddings.extend(model.encode(batch, show_progress_bar=False))
     return encoded_embeddings
 
-def compute_semantic_similarities(semantic_model_name: str, max_seq_len: int, benchmark_file_path: Path, semantic_cache_file_path: Path, semantic_similarities_file_path: Path, num_negative_samples: int = 0) -> pd.DataFrame:
+def compute_semantic_similarities(
+    semantic_model_name: str,
+    max_seq_len: int,
+    benchmark_file_path: Path,
+    semantic_cache_file_path: Path,
+    semantic_similarities_file_path: Path,
+    num_negative_samples: int = 0,
+    benchmark_data: Optional[List[Dict[str, Any]]] = None,
+) -> pd.DataFrame:
     print("Starting semantic model embeddings computation...")
     print(f"Model: {semantic_model_name}")
 
     if semantic_model_name == "salesforce":
-        return compute_salesforce_similarities(benchmark_file_path, semantic_cache_file_path, semantic_similarities_file_path, num_negative_samples)
+        return compute_salesforce_similarities(
+            benchmark_file_path=benchmark_file_path,
+            semantic_cache_file_path=semantic_cache_file_path,
+            semantic_similarities_file_path=semantic_similarities_file_path,
+            num_negative_samples=num_negative_samples,
+            benchmark_data=benchmark_data,
+        )
 
-    print(f"Loading benchmark data from: {benchmark_file_path}")
-    with benchmark_file_path.open("r", encoding="utf-8") as f:
-        benchmark_data = add_negative_samples(json.load(f), num_negatives=num_negative_samples)
-        print(f"Loaded {len(benchmark_data)} benchmark items")
+    if benchmark_data is None:
+        print(f"Loading benchmark data from: {benchmark_file_path}")
+        with benchmark_file_path.open("r", encoding="utf-8") as f:
+            benchmark_data = add_negative_samples(json.load(f), num_negatives=num_negative_samples)
+    else:
+        print("Using preloaded benchmark data")
+    print(f"Loaded {len(benchmark_data)} benchmark items")
 
-        all_paragraphs: List[str] = []
-        for item in benchmark_data:
-            all_paragraphs.extend(item["paragraphs"])
-            
-        all_paragraphs = sorted(list(set(all_paragraphs)))
-
-        print("Initializing embedding cache...")
-        embedding_cache: pd.DataFrame = pd.DataFrame(columns=['embedding'])
+    all_paragraphs: List[str] = []
+    for item in benchmark_data:
+        all_paragraphs.extend(item["paragraphs"])
         
-        if semantic_cache_file_path.exists():
-            print(f"Semantic cache file found at: {semantic_cache_file_path}")
-            embedding_cache = pd.read_pickle(semantic_cache_file_path)
-            print(f"Loaded cache with {len(embedding_cache)} embeddings")
+    all_paragraphs = sorted(list(set(all_paragraphs)))
+
+    print("Initializing embedding cache...")
+    embedding_cache: pd.DataFrame = pd.DataFrame(columns=['embedding'])
+    
+    if semantic_cache_file_path.exists():
+        print(f"Semantic cache file found at: {semantic_cache_file_path}")
+        embedding_cache = pd.read_pickle(semantic_cache_file_path)
+        print(f"Loaded cache with {len(embedding_cache)} embeddings")
+    else:
+        print(f"No semantic cache file found - will create new cache")
+
+        print("Loading SentenceTransformer model...")
+        if "inf-retriever" in semantic_model_name:
+            print("Using trust_remote_code=True for inf-retriever model")
+            model: SentenceTransformer = SentenceTransformer(semantic_model_name, trust_remote_code=True)
         else:
-            print(f"No semantic cache file found - will create new cache")
+            model: SentenceTransformer = SentenceTransformer(semantic_model_name)
+        
+        model.max_seq_length = max_seq_len
+        print(f"Model loaded successfully with max_seq_length: {max_seq_len}")
 
-            print("Loading SentenceTransformer model...")
-            if "inf-retriever" in semantic_model_name:
-                print("Using trust_remote_code=True for inf-retriever model")
-                model: SentenceTransformer = SentenceTransformer(semantic_model_name, trust_remote_code=True)
-            else:
-                model: SentenceTransformer = SentenceTransformer(semantic_model_name)
+        print("\n=== STAGE 1: Computing Embeddings ===")
+        print("Processing benchmark items with semantic model...")
+
+        for benchmark_item in tqdm(benchmark_data):
+            question: str = benchmark_item["question"]
+
+            if question not in embedding_cache.index:
+                question_emb = encode(model, [question], prompt_name="question_prompt")[0]
+                embedding_cache.loc[question] = {'embedding': question_emb.cpu()}
+
+            paragraphs: List[str] = benchmark_item["paragraphs"]
             
-            model.max_seq_length = max_seq_len
-            print(f"Model loaded successfully with max_seq_length: {max_seq_len}")
+            for paragraph in paragraphs:
+                if paragraph not in embedding_cache.index:
+                    paragraph_emb = encode(model, [paragraph], prompt_name="passage_prompt")[0]
+                    embedding_cache.loc[paragraph] = {'embedding': paragraph_emb.cpu()}
 
-            print("\n=== STAGE 1: Computing Embeddings ===")
-            print("Processing benchmark items with semantic model...")
+        print(f"Saving embedding cache to: {semantic_cache_file_path}")
+        embedding_cache.to_pickle(semantic_cache_file_path)
+        print(f"Cache saved with {len(embedding_cache)} embeddings")
 
-            for benchmark_item in tqdm(benchmark_data):
-                question: str = benchmark_item["question"]
+    output_similarities_cache: pd.DataFrame = pd.DataFrame(columns=all_paragraphs)
 
-                if question not in embedding_cache.index:
-                    question_emb = encode(model, [question], prompt_name="question_prompt")[0]
-                    embedding_cache.loc[question] = {'embedding': question_emb.cpu()}
+    if semantic_similarities_file_path.exists():
+        print(f"Semantic similarities file found at: {semantic_similarities_file_path}")
+        output_similarities_cache = pd.read_pickle(semantic_similarities_file_path)
+        print(f"Loaded similarities cache with {len(output_similarities_cache)} entries")
+    else:
+        print(f"No semantic similarities file found - will create new similarities cache")
 
-                paragraphs: List[str] = benchmark_item["paragraphs"]
-                
-                for paragraph in paragraphs:
-                    if paragraph not in embedding_cache.index:
-                        paragraph_emb = encode(model, [paragraph], prompt_name="passage_prompt")[0]
-                        embedding_cache.loc[paragraph] = {'embedding': paragraph_emb.cpu()}
+        print("\n=== STAGE 2: Computing Similarities ===")
+        
+        paragraph_embeddings = torch.stack([
+            torch.Tensor(embedding_cache.loc[paragraph, 'embedding']) 
+            for paragraph in all_paragraphs
+        ])
+        
+        def compute_question_similarities(question: str) -> pd.Series:
+            question_emb = torch.Tensor(embedding_cache.loc[question, 'embedding']).unsqueeze(0)
+            similarities = util.cos_sim(question_emb, paragraph_embeddings)[0]
+            return pd.Series(similarities.cpu().numpy(), index=all_paragraphs)
+        
+        questions = list({item["question"] for item in benchmark_data})
+        
+        print("Computing similarities using vectorized operations...")
+        output_similarities_cache = pd.DataFrame([
+            compute_question_similarities(question) 
+            for question in tqdm(questions, desc="Computing similarities")
+        ], index=questions)
 
-            print(f"Saving embedding cache to: {semantic_cache_file_path}")
-            embedding_cache.to_pickle(semantic_cache_file_path)
-            print(f"Cache saved with {len(embedding_cache)} embeddings")
-
-        output_similarities_cache: pd.DataFrame = pd.DataFrame(columns=all_paragraphs)
-
-        if semantic_similarities_file_path.exists():
-            print(f"Semantic similarities file found at: {semantic_similarities_file_path}")
-            output_similarities_cache = pd.read_pickle(semantic_similarities_file_path)
-            print(f"Loaded similarities cache with {len(output_similarities_cache)} entries")
-        else:
-            print(f"No semantic similarities file found - will create new similarities cache")
-
-            print("\n=== STAGE 2: Computing Similarities ===")
-            
-            paragraph_embeddings = torch.stack([
-                torch.Tensor(embedding_cache.loc[paragraph, 'embedding']) 
-                for paragraph in all_paragraphs
-            ])
-            
-            def compute_question_similarities(question: str) -> pd.Series:
-                question_emb = torch.Tensor(embedding_cache.loc[question, 'embedding']).unsqueeze(0)
-                similarities = util.cos_sim(question_emb, paragraph_embeddings)[0]
-                return pd.Series(similarities.cpu().numpy(), index=all_paragraphs)
-            
-            questions = list({item["question"] for item in benchmark_data})
-            
-            print("Computing similarities using vectorized operations...")
-            output_similarities_cache = pd.DataFrame([
-                compute_question_similarities(question) 
-                for question in tqdm(questions, desc="Computing similarities")
-            ], index=questions)
-
-            print(f"Saving semantic model similarities to: {semantic_similarities_file_path}")
-            output_similarities_cache.to_pickle(semantic_similarities_file_path)
-            print("Semantic model similarities saved successfully")
+        print(f"Saving semantic model similarities to: {semantic_similarities_file_path}")
+        output_similarities_cache.to_pickle(semantic_similarities_file_path)
+        print("Semantic model similarities saved successfully")
 
     return output_similarities_cache
 
-def compute_salesforce_similarities(benchmark_file_path: Path, semantic_cache_file_path: Path, semantic_similarities_file_path: Path, num_negative_samples: int) -> pd.DataFrame:
+def compute_salesforce_similarities(
+    benchmark_file_path: Path,
+    semantic_cache_file_path: Path,
+    semantic_similarities_file_path: Path,
+    num_negative_samples: int,
+    benchmark_data: Optional[List[Dict[str, Any]]] = None,
+) -> pd.DataFrame:
     model_name = "Salesforce/SFR-Embedding-Mistral"
     task = 'Given a question with temporal constraints, retrieve relevant passages that answer the question with the correct temporal information.'
     
     print(f"Using Salesforce model: {model_name}")
     print(f"Task description: {task}")
     
-    print("Processing benchmark items with Salesforce model...")
-    with benchmark_file_path.open("r", encoding="utf-8") as f:
-        benchmark_data = add_negative_samples(json.load(f), num_negatives=num_negative_samples)
-        print(f"Loaded {len(benchmark_data)} benchmark items")
-        
-        all_paragraphs: List[str] = []
-        for item in benchmark_data:
-            all_paragraphs.extend(item["paragraphs"])
-        
-        all_paragraphs = sorted(list(set(all_paragraphs)))
+    if benchmark_data is None:
+        print("Processing benchmark items with Salesforce model...")
+        with benchmark_file_path.open("r", encoding="utf-8") as f:
+            benchmark_data = add_negative_samples(json.load(f), num_negatives=num_negative_samples)
+    else:
+        print("Using preloaded benchmark data for Salesforce model...")
+    print(f"Loaded {len(benchmark_data)} benchmark items")
+
+    all_paragraphs: List[str] = []
+    for item in benchmark_data:
+        all_paragraphs.extend(item["paragraphs"])
+    
+    all_paragraphs = sorted(list(set(all_paragraphs)))
     
     def get_detailed_instruction(task_description: str, query: str) -> str:
         return f'Instruct: {task_description}\nQuery: {query}'
