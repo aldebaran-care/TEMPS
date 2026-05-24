@@ -5,7 +5,6 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
-import pandas as pd
 import torch
 
 from temporal_embeddings.config.set_output_files import set_output_files
@@ -19,6 +18,9 @@ from temporal_embeddings.evaluation.utils.evaluation.temporal_model.compute_temp
 )
 from temporal_embeddings.utils.math.normalize import normalize_list
 from temporal_embeddings.utils.os.folder_management import create_folders
+
+
+Similarities = Dict[str, Dict[str, float]]
 
 
 BENCHMARK_PATHS: Dict[str, Path] = {
@@ -181,9 +183,9 @@ def _get_temporal_similarities(
     benchmark_path: Path,
     config: Dict[str, Any],
     temporal_model_path: Path,
-    similarity_cache: Dict[str, pd.DataFrame],
+    similarity_cache: Dict[str, Similarities],
     benchmark_data: Optional[List[Dict[str, Any]]] = None,
-) -> pd.DataFrame:
+) -> Similarities:
     output_paths = set_output_files(
         temporal_model_name=run_spec.temporal_model_name,
         temporal_model_path=temporal_model_path,
@@ -196,21 +198,18 @@ def _get_temporal_similarities(
     if cache_key in similarity_cache:
         return similarity_cache[cache_key]
 
-    if similarities_path.exists():
-        temporal_similarities = pd.read_pickle(similarities_path)
-    else:
-        temporal_similarities = compute_temporal_similarities(
-            temporal_model_name=run_spec.temporal_model_name,
-            temporal_model_path=temporal_model_path,
-            batch_size=int(config["global"].get("batch_size", 128)),
-            max_seq_len=int(config["global"].get("max_seq_len", 512)),
-            benchmark_file_path=benchmark_path,
-            temporal_cache_file_path=output_paths["temporal_cache_path"],
-            temporal_similarities_file_path=similarities_path,
-            num_negative_samples=int(config["global"].get("num_negative_samples", 0)),
-            reference_date=str(config["global"].get("reference_date", "2021-11-09")),
-            benchmark_data=benchmark_data,
-        )
+    temporal_similarities = compute_temporal_similarities(
+        temporal_model_name=run_spec.temporal_model_name,
+        temporal_model_path=temporal_model_path,
+        batch_size=int(config["global"].get("batch_size", 128)),
+        max_seq_len=int(config["global"].get("max_seq_len", 512)),
+        benchmark_file_path=benchmark_path,
+        temporal_cache_file_path=output_paths["temporal_cache_path"],
+        temporal_similarities_file_path=similarities_path,
+        num_negative_samples=int(config["global"].get("num_negative_samples", 0)),
+        reference_date=str(config["global"].get("reference_date", "2021-11-09")),
+        benchmark_data=benchmark_data,
+    )
     similarity_cache[cache_key] = temporal_similarities
     return temporal_similarities
 
@@ -221,9 +220,9 @@ def _get_semantic_similarities(
     benchmark_name: str,
     benchmark_path: Path,
     config: Dict[str, Any],
-    similarity_cache: Dict[str, pd.DataFrame],
+    similarity_cache: Dict[str, Similarities],
     benchmark_data: Optional[List[Dict[str, Any]]] = None,
-) -> pd.DataFrame:
+) -> Similarities:
     output_paths = set_output_files(
         temporal_model_name="",
         temporal_model_path=temporal_model_path,
@@ -236,55 +235,67 @@ def _get_semantic_similarities(
     if cache_key in similarity_cache:
         return similarity_cache[cache_key]
 
-    if similarities_path.exists():
-        semantic_similarities = pd.read_pickle(similarities_path)
-    else:
-        semantic_similarities = compute_semantic_similarities(
-            semantic_model_name=semantic_model_name,
-            max_seq_len=int(config["global"].get("max_seq_len", 512)),
-            benchmark_file_path=benchmark_path,
-            semantic_cache_file_path=output_paths["semantic_cache_path"],
-            semantic_similarities_file_path=similarities_path,
-            num_negative_samples=int(config["global"].get("num_negative_samples", 0)),
-            benchmark_data=benchmark_data,
-        )
-
+    semantic_similarities = compute_semantic_similarities(
+        semantic_model_name=semantic_model_name,
+        max_seq_len=int(config["global"].get("max_seq_len", 512)),
+        benchmark_file_path=benchmark_path,
+        semantic_cache_file_path=output_paths["semantic_cache_path"],
+        semantic_similarities_file_path=similarities_path,
+        num_negative_samples=int(config["global"].get("num_negative_samples", 0)),
+        benchmark_data=benchmark_data,
+    )
     similarity_cache[cache_key] = semantic_similarities
     return semantic_similarities
 
 
 def _merge_hybrid_similarities(
-    temporal_similarities: pd.DataFrame,
-    semantic_similarities: pd.DataFrame,
+    temporal_similarities: Similarities,
+    semantic_similarities: Similarities,
     alpha: float,
-) -> pd.DataFrame:
-    return (alpha * temporal_similarities) + ((1.0 - alpha) * semantic_similarities)
+) -> Similarities:
+    merged: Similarities = {}
+    for question, paragraphs in temporal_similarities.items():
+        semantic_paragraphs = semantic_similarities.get(question, {})
+        merged[question] = {
+            paragraph: alpha * sim + (1.0 - alpha) * semantic_paragraphs.get(paragraph, 0.0)
+            for paragraph, sim in paragraphs.items()
+        }
+    return merged
 
 
-def _normalize_similarity_df(
-    similarities_df: pd.DataFrame,
-    normalized_cache: Dict[int, pd.DataFrame],
-) -> pd.DataFrame:
-    cache_key = id(similarities_df)
+def _normalize_similarities(
+    similarities: Similarities,
+    normalized_cache: Dict[int, Similarities],
+) -> Similarities:
+    # Per-question min-max normalization over the candidate set. Differs from the
+    # original dense-DataFrame implementation which normalized over the union of
+    # paragraphs across all questions; that variant required the O(Q*P) matrix
+    # which is what blew up RAM on TempReason / TSRetriever.
+    cache_key = id(similarities)
     if cache_key in normalized_cache:
         return normalized_cache[cache_key]
 
-    normalized_df = similarities_df.apply(lambda row: normalize_list(row.tolist()), axis=1, result_type="expand")
-    normalized_df.columns = similarities_df.columns
-    normalized_df.index = similarities_df.index
-    normalized_cache[cache_key] = normalized_df
-    return normalized_df
+    normalized: Similarities = {}
+    for question, paragraph_sims in similarities.items():
+        keys = list(paragraph_sims.keys())
+        values = [paragraph_sims[k] for k in keys]
+        normalized_values = normalize_list(values)
+        normalized[question] = dict(zip(keys, normalized_values))
+
+    normalized_cache[cache_key] = normalized
+    return normalized
 
 
 def _compute_similarity_lists(
-    similarities_df: pd.DataFrame,
+    similarities: Similarities,
     benchmark_data: List[Dict[str, Any]],
 ) -> List[List[float]]:
     similarities_list: List[List[float]] = []
     for benchmark_item in benchmark_data:
         question = benchmark_item["question"]
         paragraphs = benchmark_item["paragraphs"]
-        question_similarities = similarities_df.loc[question][paragraphs].tolist()
+        question_bucket = similarities[question]
+        question_similarities = [question_bucket[paragraph] for paragraph in paragraphs]
         similarities_list.append(question_similarities)
     return similarities_list
 
@@ -417,14 +428,14 @@ def run_paper_evaluations(config_path: Path) -> None:
             num_negative_samples=num_negative_samples,
         )
         ground_truth = [item["answer"] for item in benchmark_data]
-        similarity_cache: Dict[str, pd.DataFrame] = {}
-        normalized_temporal_cache: Dict[int, pd.DataFrame] = {}
+        similarity_cache: Dict[str, Similarities] = {}
+        normalized_temporal_cache: Dict[int, Similarities] = {}
 
         for run_spec in run_matrix:
             print(f"[{benchmark_name}] Run: {run_spec.run_id}")
 
             if run_spec.run_type == "temporal":
-                similarities_df = _get_temporal_similarities(
+                similarities = _get_temporal_similarities(
                     run_spec=run_spec,
                     benchmark_name=benchmark_name,
                     benchmark_path=benchmark_path,
@@ -434,7 +445,7 @@ def run_paper_evaluations(config_path: Path) -> None:
                     benchmark_data=benchmark_data,
                 )
             elif run_spec.run_type == "semantic":
-                similarities_df = _get_semantic_similarities(
+                similarities = _get_semantic_similarities(
                     semantic_model_name=run_spec.semantic_model_name,
                     temporal_model_path=temporal_model_path,
                     benchmark_name=benchmark_name,
@@ -444,7 +455,7 @@ def run_paper_evaluations(config_path: Path) -> None:
                     benchmark_data=benchmark_data,
                 )
             else:
-                temporal_df = _get_temporal_similarities(
+                temporal_similarities = _get_temporal_similarities(
                     run_spec=run_spec,
                     benchmark_name=benchmark_name,
                     benchmark_path=benchmark_path,
@@ -453,7 +464,7 @@ def run_paper_evaluations(config_path: Path) -> None:
                     similarity_cache=similarity_cache,
                     benchmark_data=benchmark_data,
                 )
-                semantic_df = _get_semantic_similarities(
+                semantic_similarities = _get_semantic_similarities(
                     semantic_model_name=run_spec.semantic_model_name,
                     temporal_model_path=temporal_model_path,
                     benchmark_name=benchmark_name,
@@ -462,15 +473,15 @@ def run_paper_evaluations(config_path: Path) -> None:
                     similarity_cache=similarity_cache,
                     benchmark_data=benchmark_data,
                 )
-                normalized_temporal_df = _normalize_similarity_df(temporal_df, normalized_temporal_cache)
-                normalized_semantic_df = _normalize_similarity_df(semantic_df, {})
-                similarities_df = _merge_hybrid_similarities(
-                    temporal_similarities=normalized_temporal_df,
-                    semantic_similarities=normalized_semantic_df,
+                normalized_temporal = _normalize_similarities(temporal_similarities, normalized_temporal_cache)
+                normalized_semantic = _normalize_similarities(semantic_similarities, {})
+                similarities = _merge_hybrid_similarities(
+                    temporal_similarities=normalized_temporal,
+                    semantic_similarities=normalized_semantic,
                     alpha=run_spec.alpha,
                 )
 
-            similarities_list = _compute_similarity_lists(similarities_df, benchmark_data)
+            similarities_list = _compute_similarity_lists(similarities, benchmark_data)
             metrics = _compute_report_metrics(ground_truth, similarities_list, top_k=top_k)
 
             report_rows.append(
@@ -499,12 +510,6 @@ def run_paper_evaluations(config_path: Path) -> None:
 
             del similarities_list
             del metrics
-            if run_spec.run_type == "hybrid":
-                del temporal_df
-                del semantic_df
-                del normalized_temporal_df
-                del normalized_semantic_df
-            del similarities_df
 
         similarity_cache.clear()
         normalized_temporal_cache.clear()
