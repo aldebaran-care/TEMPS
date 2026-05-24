@@ -16,8 +16,13 @@
 #SBATCH --constraint=a100
 #SBATCH --nodes=1
 #SBATCH --ntasks=1
-#SBATCH --cpus-per-task=8
+# Stage-2 similarity computation is CPU-parallel. On gpu_p5 the IDRIS share
+# is 8 cores per requested GPU, so to get the full 64-core node we need
+# --exclusive (which also reserves all 8 GPUs — we only use 1, but with
+# --exclusive the node is billed in full regardless).
+#SBATCH --cpus-per-task=64
 #SBATCH --gres=gpu:1
+#SBATCH --exclusive
 #SBATCH --time=10:00:00
 
 set -euo pipefail
