@@ -20,7 +20,7 @@
     "temporal": {
         "enabled": true,
         "model_name": "all-minilm-l6-v2",
-        "model_path": "output/trained_models/SET_ME_TO_POSTTRAIN_CHECKPOINT.pth"
+        "model_path": "output/trained_models/model_sentence-transformers_all-MiniLM-L6-v2_2026-05-24_00-00-51.pth"
     },
     "semantic_baselines": {
         "enabled": true,
@@ -41,7 +41,15 @@
             "salesforce"
         ],
         "alphas": [
-            0.5
+            0.1,
+            0.2,
+            0.3,
+            0.4,
+            0.5,
+            0.6,
+            0.7,
+            0.8,
+            0.9
         ]
     },
     "report": {
