@@ -9,6 +9,7 @@ from typing import Any, Dict, List, Optional, Tuple
 from tqdm import tqdm
 import pandas as pd
 from sentence_transformers import SentenceTransformer, util
+from sentence_transformers.models import Normalize, Pooling, Transformer
 import torch
 
 from temporal_embeddings.evaluation.utils.data.random_paragraphs import add_negative_samples
@@ -291,7 +292,20 @@ def compute_salesforce_similarities(
         print("\n=== STAGE 1: Computing Embeddings ===")
 
         print("Loading Salesforce model...")
-        model = SentenceTransformer(model_name, trust_remote_code=True)
+        # The offline HF cache for SFR-Embedding-Mistral on Jean Zay only ships
+        # the base AutoModel files (no modules.json / 1_Pooling / 2_Normalize).
+        # SentenceTransformer(name, ...) silently falls back to mean pooling
+        # when modules.json is missing — catastrophic for a decoder-only
+        # Mistral, since the shared instruction prefix dominates the mean and
+        # every query embeds to nearly the same vector. Build the pipeline
+        # explicitly with the last-token pooling the model card specifies.
+        word_emb = Transformer(model_name, model_args={"trust_remote_code": True})
+        pooling = Pooling(
+            word_emb.get_word_embedding_dimension(),
+            pooling_mode_lasttoken=True,
+        )
+        normalize = Normalize()
+        model = SentenceTransformer(modules=[word_emb, pooling, normalize])
         print("Salesforce model loaded successfully")
 
         questions_to_encode = []
