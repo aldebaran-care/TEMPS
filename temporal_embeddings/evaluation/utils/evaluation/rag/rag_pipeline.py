@@ -199,13 +199,17 @@ class Generator:
             self.tokenizer.pad_token = self.tokenizer.eos_token
         self.tokenizer.padding_side = "left"
 
-        print(f"[Generator] loading model: {model_name_or_path} ({dtype})")
+        print(f"[Generator] loading model: {model_name_or_path} ({dtype}) on {device}")
+        # Avoid passing `device_map=` — it forces transformers down the
+        # accelerate-based placement path, which makes accelerate a hard dep
+        # even for a single-GPU 7B model. Plain load + `.to(device)` is enough.
         self.model = AutoModelForCausalLM.from_pretrained(
             model_name_or_path,
             torch_dtype=torch_dtype,
-            device_map=device,
             trust_remote_code=True,
+            low_cpu_mem_usage=False,
         )
+        self.model.to(device)
         self.model.eval()
         self.device = device
         self.max_new_tokens = max_new_tokens
