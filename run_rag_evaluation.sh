@@ -31,10 +31,9 @@
 # Retrieval stage is CPU-parallel; generation stage is GPU-bound on one A100.
 # Reserve the full node so we get all 64 cores for the parallel similarity
 # computation (gpu_p5 quota is otherwise 8 cores per requested GPU).
-#SBATCH --cpus-per-task=64
+#SBATCH --cpus-per-task=8
 #SBATCH --gres=gpu:1
-#SBATCH --exclusive
-#SBATCH --time=15:00:00
+#SBATCH --time=5:00:00
 
 set -euo pipefail
 
