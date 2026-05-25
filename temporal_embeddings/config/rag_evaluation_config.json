@@ -13,17 +13,22 @@
             {
                 "name": "e5-base-v2",
                 "model": "intfloat/e5-base-v2",
-                "alpha": 0.5
+                "alpha": 0.6
             },
             {
                 "name": "bge-large-en-v1.5",
                 "model": "BAAI/bge-large-en-v1.5",
-                "alpha": 0.5
+                "alpha": 0.6
             },
             {
                 "name": "mpnet-base-v2",
                 "model": "sentence-transformers/all-mpnet-base-v2",
-                "alpha": 0.5
+                "alpha": 0.6
+            },
+            {
+                "name": "salesforce-sfr-embedding-mistral",
+                "model": "salesforce",
+                "alpha": 0.6
             }
         ]
     },

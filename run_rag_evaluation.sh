@@ -89,6 +89,7 @@ uv run python run_rag_evaluation.py --config "${EVAL_CONFIG}"
 #       'intfloat/e5-base-v2',
 #       'BAAI/bge-large-en-v1.5',
 #       'sentence-transformers/all-mpnet-base-v2',
+#       'Salesforce/SFR-Embedding-Mistral',
 #   ]:
 #       snapshot_download(repo_id=repo)
 #   "
