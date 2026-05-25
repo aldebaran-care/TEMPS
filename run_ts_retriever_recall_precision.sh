@@ -89,11 +89,22 @@ def _release_memory() -> None:
         torch.cuda.empty_cache()
 
 
-def _compute_recall_precision_at_k(
+def _compute_ranking_metrics(
     ground_truth: List[List[int]],
     similarities_list: List[List[float]],
 ) -> Dict[str, float]:
     metrics: Dict[str, float] = {}
+
+    # MRR walks the full ranked list, so it is independent of top_k. Compute
+    # once with an arbitrary top_k argument.
+    mrr = compute_metrics(
+        first_list=ground_truth,
+        second_list=similarities_list,
+        top_k=1,
+        metric="mrr",
+    )["mrr"]
+    metrics["MRR"] = float(mrr)
+
     for top_k in TOP_K_VALUES:
         recall = compute_metrics(
             first_list=ground_truth,
@@ -107,8 +118,15 @@ def _compute_recall_precision_at_k(
             top_k=top_k,
             metric="precision",
         )["precision"]
+        ndcg = compute_metrics(
+            first_list=ground_truth,
+            second_list=similarities_list,
+            top_k=top_k,
+            metric="ndcg",
+        )["ndcg"]
         metrics[f"R@{top_k}"] = float(recall)
         metrics[f"P@{top_k}"] = float(precision)
+        metrics[f"NDCG@{top_k}"] = float(ndcg)
     return metrics
 
 
@@ -117,6 +135,7 @@ def _write_report(report_path: Path, rows: List[Dict[str, Any]]) -> None:
 
     recall_headers = [f"R@{top_k}" for top_k in TOP_K_VALUES]
     precision_headers = [f"P@{top_k}" for top_k in TOP_K_VALUES]
+    ndcg_headers = [f"NDCG@{top_k}" for top_k in TOP_K_VALUES]
     headers = [
         "Run ID",
         "Type",
@@ -124,12 +143,14 @@ def _write_report(report_path: Path, rows: List[Dict[str, Any]]) -> None:
         "Semantic Model",
         "Alpha",
         "Queries",
+        "MRR",
         *recall_headers,
         *precision_headers,
+        *ndcg_headers,
     ]
 
     markdown_lines = [
-        "# TS-Retriever Recall/Precision Report",
+        "# TS-Retriever Ranking Metrics Report",
         "",
         "| " + " | ".join(headers) + " |",
         "| " + " | ".join(["---"] * len(headers)) + " |",
@@ -143,9 +164,11 @@ def _write_report(report_path: Path, rows: List[Dict[str, Any]]) -> None:
             row["semantic_model_name"],
             row["alpha"],
             str(row["num_queries"]),
+            _format_float(row["MRR"]),
         ]
         values.extend(_format_float(row[header]) for header in recall_headers)
         values.extend(_format_float(row[header]) for header in precision_headers)
+        values.extend(_format_float(row[header]) for header in ndcg_headers)
         markdown_lines.append("| " + " | ".join(values) + " |")
 
     with report_path.open("w", encoding="utf-8") as f:
@@ -232,7 +255,7 @@ def main() -> None:
             )
 
         similarities_list = _compute_similarity_lists(similarities, benchmark_data)
-        metrics = _compute_recall_precision_at_k(ground_truth, similarities_list)
+        metrics = _compute_ranking_metrics(ground_truth, similarities_list)
 
         rows.append(
             {
