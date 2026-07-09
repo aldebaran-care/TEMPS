@@ -38,8 +38,8 @@ def compute_question_similarities(question: str, temporal_cache, all_paragraphs,
                 for p_expr_text, p_expr_value in paragraph_expressions:
                     similarity = compute_similarity_expressions_sutime(
                         q_expr_value if q_expr_value else q_expr_text,
-                        p_expr_value if p_expr_value else p_expr_text,
                         question_current_date,
+                        p_expr_value if p_expr_value else p_expr_text,
                         paragraph_current_date
                     )
                     max_similarity = max(max_similarity, similarity)
