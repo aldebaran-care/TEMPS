@@ -79,30 +79,6 @@ uv sync
 This creates a `.venv/` with everything needed to run `train.py`. Invoke scripts with
 `uv run`, e.g. `uv run python train.py ...` or `uv run torchrun ...` (see `train.sh`).
 
-#### Jean Zay (offline A100 compute nodes)
-
-Jean Zay's `gpu_p5` A100 nodes have **no internet**, so HuggingFace weights must be
-pre-cached on a login node first:
-
-1. On a **login node** (has internet):
-   ```bash
-   uv sync
-   uv run python scripts/prefetch_model.py sentence-transformers/all-MiniLM-L6-v2
-   ```
-   This populates `.hf_cache/` under the project.
-2. Submit the job — `train.sh` exports `HF_HOME=$PWD/.hf_cache`, `TRANSFORMERS_OFFLINE=1`,
-   `HF_HUB_OFFLINE=1`, so the compute node reads from the cache and never touches the network:
-   ```bash
-   sbatch train.sh
-   ```
-3. After the job, `train.sh` packages the TensorBoard event dir + metrics JSON + `log.csv`
-   into `logs/<jobid>_<run>.tar.gz`. Pull it back and view locally:
-   ```bash
-   scp jean-zay:.../temporal-embeddings/logs/<jobid>_*.tar.gz .
-   tar xzf <jobid>_*.tar.gz
-   tensorboard --logdir logs/runs
-   ```
-
 ### Data preparation / annotation environment (local)
 
 The data prep and annotation scripts (`create_*.py`, `add_score_v2_to_training_data.py`, etc.)
