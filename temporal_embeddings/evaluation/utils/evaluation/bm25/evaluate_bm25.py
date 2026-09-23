@@ -8,8 +8,9 @@ from temporal_embeddings.evaluation.utils.evaluation.bm25.compute_bm25_similarit
 from temporal_embeddings.config.set_output_files import set_output_files
 from temporal_embeddings.evaluation.utils.evaluation.metrics import compute_metrics
 from temporal_embeddings.evaluation.utils.data.random_paragraphs import add_negative_samples
+from temporal_embeddings.evaluation.utils.data.splits import select_split_items
 
-def evaluate_bm25(bm25_model_name: str, benchmark: str, benchmark_file_path: Path, eval_id: str, top_k: int, metric: str, num_negative_samples: int) -> None:
+def evaluate_bm25(bm25_model_name: str, benchmark: str, benchmark_file_path: Path, eval_id: str, top_k: int, metric: str, num_negative_samples: int, split: str = "test") -> None:
     print(f"Starting BM25 evaluation for model: {bm25_model_name}")
     print(f"Benchmark file: {benchmark_file_path}")
     
@@ -42,9 +43,13 @@ def evaluate_bm25(bm25_model_name: str, benchmark: str, benchmark_file_path: Pat
     with open(benchmark_file_path, "r") as f:
         benchmark_data: List[dict] = add_negative_samples(json.load(f), num_negatives=num_negative_samples)
 
-        for e in benchmark_data:
-            ground_truth.append(e["answer"])
-    
+    # Similarities are computed over the full benchmark (cache is split-agnostic);
+    # only the metric computation is restricted to the requested split.
+    benchmark_data = select_split_items(benchmark_data, split)
+
+    for e in benchmark_data:
+        ground_truth.append(e["answer"])
+
     print(f"Loaded ground truth for {len(ground_truth)} items")
     
     print("Filtering similarities to only include candidate paragraphs...")

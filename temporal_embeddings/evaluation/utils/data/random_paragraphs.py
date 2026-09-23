@@ -2,7 +2,6 @@ import random
 from typing import List, Dict, Any
 
 from tqdm import tqdm
-from rank_bm25 import BM25Okapi
 
 
 def add_negative_samples(data: List[Dict[str, Any]], num_negatives: int, seed: int = 42) -> List[Dict[str, Any]]:
@@ -30,14 +29,20 @@ def add_negative_samples(data: List[Dict[str, Any]], num_negatives: int, seed: i
         return data
 
     elif num_negatives > 0:
+        # Imported lazily — `rank_bm25` is only used for BM25-based negative
+        # mining, which is opt-in via num_negatives > 0. Keeping the import
+        # local lets the default path (num_negatives == 0) run without the
+        # package installed.
+        from rank_bm25 import BM25Okapi
+
         random.seed(seed)
-        
+
         # Collect all paragraphs from all items
         all_paragraphs: List[str] = []
         for item in tqdm(data, desc="Collecting all paragraphs"):
             all_paragraphs.extend(item["paragraphs"])
         all_paragraphs = list(set(all_paragraphs))
-        
+
         # Tokenize all paragraphs for BM25
         tokenized_paragraphs = [p.lower().split() for p in all_paragraphs]
         bm25 = BM25Okapi(tokenized_paragraphs)

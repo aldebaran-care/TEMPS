@@ -9,6 +9,10 @@ import torch
 
 from temporal_embeddings.config.set_output_files import set_output_files
 from temporal_embeddings.evaluation.utils.data.random_paragraphs import add_negative_samples
+from temporal_embeddings.evaluation.utils.data.splits import (
+    VALID_SPLITS,
+    select_split_items as _select_split_items,
+)
 from temporal_embeddings.evaluation.utils.evaluation.metrics import compute_metrics
 from temporal_embeddings.evaluation.utils.evaluation.semantic_model.compute_semantic_similarities import (
     compute_semantic_similarities,
@@ -401,7 +405,7 @@ def _release_memory() -> None:
         torch.cuda.empty_cache()
 
 
-def run_paper_evaluations(config_path: Path) -> None:
+def run_paper_evaluations(config_path: Path, split: str = "test") -> None:
     with config_path.open("r", encoding="utf-8") as f:
         config: Dict[str, Any] = json.load(f)
 
@@ -417,17 +421,23 @@ def run_paper_evaluations(config_path: Path) -> None:
     run_order = {run.run_id: idx for idx, run in enumerate(run_matrix)}
     benchmark_order = {benchmark_name: idx for idx, benchmark_name in enumerate(enabled_benchmarks)}
 
-    print(f"Running {len(run_matrix)} run configurations over {len(enabled_benchmarks)} benchmarks.")
+    print(
+        f"Running {len(run_matrix)} run configurations over {len(enabled_benchmarks)} "
+        f"benchmarks on the '{split}' split."
+    )
 
     for benchmark_name in enabled_benchmarks:
         benchmark_path = BENCHMARK_PATHS[benchmark_name]
         print(f"\n=== Benchmark: {benchmark_name} ===")
 
+        # Similarity caches are built over the *full* benchmark; metrics are
+        # computed only on the requested split (test by default).
         benchmark_data = _load_benchmark_data(
             benchmark_path=benchmark_path,
             num_negative_samples=num_negative_samples,
         )
-        ground_truth = [item["answer"] for item in benchmark_data]
+        eval_data = _select_split_items(benchmark_data, split)
+        ground_truth = [item["answer"] for item in eval_data]
         similarity_cache: Dict[str, Similarities] = {}
         normalized_temporal_cache: Dict[int, Similarities] = {}
 
@@ -481,7 +491,7 @@ def run_paper_evaluations(config_path: Path) -> None:
                     alpha=run_spec.alpha,
                 )
 
-            similarities_list = _compute_similarity_lists(similarities, benchmark_data)
+            similarities_list = _compute_similarity_lists(similarities, eval_data)
             metrics = _compute_report_metrics(ground_truth, similarities_list, top_k=top_k)
 
             report_rows.append(
@@ -492,7 +502,7 @@ def run_paper_evaluations(config_path: Path) -> None:
                     "semantic_model_name": run_spec.semantic_model_name,
                     "alpha": f"{run_spec.alpha:.2f}" if run_spec.run_type == "hybrid" else "-",
                     "benchmark": benchmark_name,
-                    "num_queries": len(benchmark_data),
+                    "num_queries": len(eval_data),
                     "mrr": metrics["mrr"],
                     "ndcg": metrics["ndcg"],
                     "recall": metrics["recall"],
@@ -516,6 +526,7 @@ def run_paper_evaluations(config_path: Path) -> None:
         del similarity_cache
         del normalized_temporal_cache
         del ground_truth
+        del eval_data
         del benchmark_data
         _release_memory()
 
@@ -537,9 +548,20 @@ def main() -> None:
         default="temporal_embeddings/config/paper_evaluation_config.json",
         help="Path to evaluation config JSON file.",
     )
+    parser.add_argument(
+        "--split",
+        type=str,
+        default="test",
+        choices=list(VALID_SPLITS),
+        help=(
+            "Which split to compute metrics on. Defaults to 'test'. "
+            "Splits are created with split_and_tune_alpha.py; benchmarks without "
+            "split tags fall back to evaluating on all items."
+        ),
+    )
     args = parser.parse_args()
 
-    run_paper_evaluations(Path(args.config))
+    run_paper_evaluations(Path(args.config), split=args.split)
 
 
 if __name__ == "__main__":
