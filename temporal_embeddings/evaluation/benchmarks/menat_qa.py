@@ -1,0 +1,77 @@
+from pathlib import Path
+import json
+from typing import List, Dict
+
+def create_menat_qa_benchmark(dataset_name: str) -> None:
+    main_folder: Path = Path("data/evaluation/menat_qa")
+    input_path: Path = main_folder / Path("MenatQA.json")
+    
+    if dataset_name.lower() == "menat_qa":
+        output_file: Path = main_folder / "processed_menat_qa.json"
+    
+    elif dataset_name.lower() == "menat_qa_granularity":
+        output_file: Path = main_folder / "processed_menat_qa_granularity.json"
+    
+    elif dataset_name.lower() == "menat_qa_counterfactual":
+        output_file: Path = main_folder / "processed_menat_qa_counterfactual.json"
+    
+    elif dataset_name.lower() == "menat_qa_expand":
+        output_file: Path = main_folder / "processed_menat_qa_expand.json"
+    
+    elif dataset_name.lower() == "menat_qa_narrow":
+        output_file: Path = main_folder / "processed_menat_qa_narrow.json"
+    
+    else:
+        raise ValueError("Unsupported dataset name.")
+
+    main_folder.mkdir(parents=True, exist_ok=True)
+
+    with input_path.open("r", encoding="utf-8") as infile:
+        menat_data: List[Dict] = json.load(infile)
+
+    processed_data: List[Dict] = []
+    
+    for item in menat_data:
+        if item["updated_answer"] == "unanswerable" or item["updated_answer"] != item["answer"]:
+            continue
+
+        if dataset_name.lower() == "menat_qa_granularity" and item.get("type") != "granularity":
+            continue
+        
+        if dataset_name.lower() == "menat_qa_counterfactual" and item.get("type") != "counterfactual":
+            continue
+        
+        if dataset_name.lower() == "menat_qa_expand" and item.get("type") != "expand":
+            continue
+        
+        if dataset_name.lower() == "menat_qa_narrow" and item.get("type") != "narrow":
+            continue
+
+        question: str = item["updated_question"].strip()
+        
+        paragraphs: List[str] = list(set([c.strip() for ctx in item["context"] for c in ctx["text"].split(" . ")]))
+        
+        answers: List[str] = [a.strip() for a in item["annotated_para"].split(" . ")]
+
+        for ans in answers:
+            if ans.strip() not in paragraphs:
+                paragraphs.append(ans.strip())
+
+        answer_index: List[int] = [i for i, p in enumerate(paragraphs) if any(answer.strip() in p for answer in answers)]
+
+        entry = {
+            "question": question,
+            "paragraphs": paragraphs,
+            "answer": answer_index
+        }
+        
+        processed_data.append(entry)
+
+    with output_file.open("w", encoding="utf-8") as outfile:
+        json.dump(processed_data, outfile, indent=2, ensure_ascii=False)
+
+    if dataset_name.lower() == "menat_qa":
+        print(f"Processed dataset saved to: {output_file}")
+    
+    else:
+        print(f"Processed filtered dataset saved to: {output_file}")

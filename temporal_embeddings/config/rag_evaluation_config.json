@@ -1,0 +1,50 @@
+{
+    "global": {
+        "batch_size": 128,
+        "max_seq_len": 512,
+        "top_k": 5,
+        "reference_date": "2021-11-09"
+    },
+    "retrieval": {
+        "temporal_model_name": "all-minilm-l6-v2",
+        "temporal_model_path": "output/trained_models/model_sentence-transformers_all-MiniLM-L6-v2_2026-05-24_00-00-51.pth",
+        "include_temporal_only": true,
+        "baselines": [
+            {
+                "name": "e5-base-v2",
+                "model": "intfloat/e5-base-v2",
+                "alpha": 0.6
+            },
+            {
+                "name": "bge-large-en-v1.5",
+                "model": "BAAI/bge-large-en-v1.5",
+                "alpha": 0.6
+            },
+            {
+                "name": "mpnet-base-v2",
+                "model": "all-mpnet-base-v2",
+                "alpha": 0.6
+            },
+            {
+                "name": "salesforce-sfr-embedding-mistral",
+                "model": "salesforce",
+                "alpha": 0.6
+            }
+        ]
+    },
+    "generator": {
+        "provider": "openrouter",
+        "model_name_or_path": "qwen/qwen-2.5-7b-instruct",
+        "api_key_env": "OPENROUTER_API_KEY",
+        "base_url": "https://openrouter.ai/api/v1/chat/completions",
+        "max_new_tokens": 64,
+        "batch_size": 8,
+        "request_timeout_seconds": 120,
+        "max_retries": 5
+    },
+    "report": {
+        "output_dir": "output/rag",
+        "report_filename": "rag_evaluation_report.md",
+        "predictions_filename": "rag_evaluation_predictions.json"
+    }
+}

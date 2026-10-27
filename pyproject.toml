@@ -1,0 +1,44 @@
+[project]
+name = "temporal-embeddings"
+version = "0.1.0"
+description = "TEMPS: Temporal Sentence Embeddings for Temporal Information Retrieval"
+readme = "README.md"
+license = "MIT"
+license-files = ["LICENSE"]
+requires-python = ">=3.10,<3.13"
+dependencies = [
+    # --- Core ML ---
+    "torch",
+    "transformers",
+    "sentence-transformers",
+    "datasets",
+    "numpy",
+    "pandas",
+    "scipy",
+    "requests",
+    "python-dotenv",
+    # --- Logging / progress ---
+    "tqdm",
+    "tensorboard",
+    "rank-bm25>=0.2.2",
+    "python-dateutil",
+    "huggingface-hub",
+]
+
+[project.optional-dependencies]
+# Rule-based SUTime control (Stanford CoreNLP server, GPL-3.0); install the
+# server with `uv run python scripts/install_corenlp.py`.
+sutime = ["stanza>=1.8"]
+
+[[tool.uv.index]]
+name = "pytorch"
+url = "https://download.pytorch.org/whl/cu128"
+explicit = true
+
+[tool.uv.sources]
+torch = [
+    { index = "pytorch", marker = "sys_platform != 'darwin'" },
+]
+
+[tool.uv]
+package = false

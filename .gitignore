@@ -1,0 +1,52 @@
+# data
+/data/
+
+models/
+
+logs/
+
+# Byte-compiled files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Logs and databases
+*.log
+
+# IDEs and Editors
+.vscode/
+
+# Temporary files
+*.tmp
+*.bak
+*.swp
+*.swo
+*.orig
+*.DS_Store
+
+*.csv
+*.json
+
+# Exception: allow JSON files in config directory
+!temporal_embeddings/config/*.json
+!splits/*.json
+
+.env
+
+
+# uv
+.venv/
+
+*_logs/
+
+# Experiment outputs (similarity caches, metrics) — hosted separately, never committed
+output/
+
+# Local checkpoints, CoreNLP server files, root-level plots
+*.pth
+*.props
+/*.png
+
+# Caches
+.hf_cache/
+.pytest_cache/

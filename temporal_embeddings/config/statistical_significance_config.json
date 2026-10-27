@@ -1,0 +1,41 @@
+{
+    "temporal_model_name": "all-minilm-l6-v2",
+    "temporal_model_path": "output/trained_models/model_sentence-transformers_all-MiniLM-L6-v2_2026-05-24_00-00-51.pth",
+    "benchmarks": {
+        "time_sensitive_qa": {
+            "display": "TimeQA",
+            "alpha": 0.6
+        },
+        "temp_reason": {
+            "display": "TempReason",
+            "alpha": 0.8
+        },
+        "ts_retriever": {
+            "display": "TS-Retriever",
+            "alpha": 0.3
+        }
+    },
+    "baselines": [
+        {
+            "display": "MPNet_base-v2",
+            "model": "all-mpnet-base-v2"
+        },
+        {
+            "display": "E5_base-v2",
+            "model": "intfloat/e5-base-v2"
+        },
+        {
+            "display": "BGE_large-v1.5",
+            "model": "BAAI/bge-large-en-v1.5"
+        },
+        {
+            "display": "Mistral",
+            "model": "salesforce"
+        }
+    ],
+    "metrics": ["mrr", "ndcg", "recall", "precision"],
+    "top_k": 5,
+    "bootstrap_iterations": 10000,
+    "random_seed": 42,
+    "report_path": "output/metrics/statistical_significance_report.md"
+}

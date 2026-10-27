@@ -1,0 +1,74 @@
+from pathlib import Path
+import json
+from typing import Dict, List
+
+import pandas as pd
+
+from temporal_embeddings.evaluation.utils.evaluation.metrics import compute_metrics
+from temporal_embeddings.evaluation.utils.evaluation.sutime.compute_sutime_similarities import SutimeSimilarityMode, compute_sutime_similarities, sutime_similarities_path_for_mode
+from temporal_embeddings.config.set_output_files import set_output_files
+from temporal_embeddings.evaluation.utils.data.random_paragraphs import add_negative_samples
+from temporal_embeddings.evaluation.utils.data.splits import select_split_items
+
+def evaluate_sutime(model_name: str, benchmark: str, benchmark_file_path: Path, eval_id: str, top_k: int, metric: str, num_negative_samples: int, split: str = "test", sutime_similarity_mode: SutimeSimilarityMode = "merge") -> None:
+    print(f"Starting SUTime evaluation with model: {model_name}")
+    print(f"Benchmark file: {benchmark_file_path}")
+    
+    temporal_cache_path, base_temporal_similarities_path, _, _ = set_output_files(
+        temporal_model_name="sutime",
+        temporal_model_path=Path(""),
+        semantic_model_name="",
+        benchmark=benchmark,
+    ).values()
+    temporal_similarities_path = sutime_similarities_path_for_mode(
+        base_temporal_similarities_path,
+        sutime_similarity_mode,
+    )
+
+    if not temporal_similarities_path.exists():
+        print("Starting two-stage SUTime evaluation...")
+        
+        sutime_similarities = compute_sutime_similarities(
+            benchmark_file_path=benchmark_file_path,
+            cache_file_path=temporal_cache_path,
+            similarities_file_path=base_temporal_similarities_path,
+            num_negative_samples=num_negative_samples,
+            similarity_mode=sutime_similarity_mode,
+        )
+    else:
+        print("Skipping similarity computation - using existing results")
+
+        print(f"Loading similarities from: {temporal_similarities_path}")
+        sutime_similarities: pd.DataFrame = pd.read_pickle(temporal_similarities_path)
+        print(f"Loaded {len(sutime_similarities)} similarity entries")
+
+    print("Loading ground truth data...")
+    ground_truth: List[List[int]] = []
+
+    with benchmark_file_path.open("r", encoding="utf-8") as f:
+        benchmark_data: List[Dict] = add_negative_samples(json.load(f), num_negatives=num_negative_samples)
+
+    # Similarities are computed over the full benchmark (cache is split-agnostic);
+    # only the metric computation is restricted to the requested split.
+    benchmark_data = select_split_items(benchmark_data, split)
+
+    for element in benchmark_data:
+        ground_truth.append(element["answer"])
+
+    print(f"Loaded ground truth for {len(ground_truth)} items")
+    
+    print("Filtering similarities to only include candidate paragraphs...")
+    similarities_list: List[List[float]] = []
+    
+    for _, benchmark_item in enumerate(benchmark_data):
+        question_similarities = sutime_similarities.loc[benchmark_item["question"]][benchmark_item["paragraphs"]].tolist()
+        similarities_list.append(question_similarities)
+    
+    print(f"Filtered to {len(similarities_list)} similarity lists with candidate paragraphs only")
+
+    print(f"Computing metrics with top_k={top_k}, metric={metric}")
+    
+    results: Dict[str, float]= compute_metrics(ground_truth, similarities_list, top_k, metric)
+
+    print(results)
+    print("SUTime evaluation completed successfully")

@@ -1,0 +1,95 @@
+{
+    "evaluate_temporal_semantic_model": {
+        "description": "Evaluate the performance of a temporal model combined with an external semantic model on a given benchmark dataset using score fusion or ranking fusion.",
+        "parameters": {
+            "model_name": {
+                "type": "string",
+                "description": "Name of the temporal model to evaluate."
+            },
+            "external_model_name": {
+                "type": "string",
+                "description": "Name of the external sentence transformer model to use for fusion."
+            },
+            "model_path": {
+                "type": "string",
+                "description": "Path to the pre-trained temporal semantic model."
+            },
+            "batch_size": {
+                "type": "integer",
+                "default": 128,
+                "description": "Number of samples per evaluation batch."
+            },
+            "max_seq_len": {
+                "type": "integer",
+                "default": 512,
+                "description": "Maximum sequence length for model input."
+            },
+            "benchmark_file_path": {
+                "type": "string",
+                "description": "Path to the benchmark JSON file containing questions, paragraphs, and answers."
+            },
+            "eval_id": {
+                "type": "integer",
+                "description": "Unique identifier for the evaluation run, used in output file naming."
+            },
+            "top_k": {
+                "type": "integer",
+                "description": "Number of top predictions to consider when computing metrics."
+            },
+            "metric": {
+                "type": "string",
+                "description": "Name of the metric to compute (e.g., 'precision', 'recall', 'f1')."
+            },
+            "skip": {
+                "type": "boolean",
+                "default": false,
+                "description": "If true, skip running the models and use existing similarity files."
+            },
+            "use_ranking": {
+                "type": "boolean",
+                "default": false,
+                "description": "If true, use Borda count ranking fusion; otherwise use score normalization and weighted fusion."
+            },
+            "alpha": {
+                "type": "number",
+                "default": 0.5,
+                "description": "Weight parameter for score fusion (temporal weight), where external weight is (1-alpha). Temporal gets weight 'alpha', external gets weight '(1-alpha)' but is multiplied by 2 in the code."
+            },
+            "use_all_paragraphs": {
+                "type": "boolean",
+                "default": false,
+                "description": "If true, use all unique paragraphs from the benchmark for each question; otherwise use only the paragraphs associated with each question."
+            },
+            "reference_date": {
+                "type": "string",
+                "default": "09 august 2024",
+                "description": "Reference date used for temporal embeddings."
+            },
+            "output_paths": {
+                "description": "Configuration for output file paths.",
+                "properties": {
+                    "temporal_similarities_path": {
+                        "type": "string",
+                        "default": "output/similarities/{benchmark_stem}/{model_name}/{model_stem}/{eval_id}_similarities.json",
+                        "description": "Path pattern for temporal model similarity output files."
+                    },
+                    "semantic_similarities_path": {
+                        "type": "string",
+                        "default": "output/similarities/{benchmark_stem}/{external_model_name}/{eval_id}_similarities.json",
+                        "description": "Path pattern for external model similarity output files."
+                    },
+                    "temporal_cache_path": {
+                        "type": "string",
+                        "default": "output/cache/{benchmark_stem}/{model_name}/{model_stem}/{eval_id}_cache.pkl",
+                        "description": "Path pattern for temporal model embedding cache files."
+                    },
+                    "semantic_cache_path": {
+                        "type": "string",
+                        "default": "output/cache/{benchmark_stem}/{external_model_name}/{eval_id}_cache.pkl",
+                        "description": "Path pattern for external model embedding cache files."
+                    }
+                }
+            }
+        }
+    }
+}
